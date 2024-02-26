@@ -1,0 +1,42 @@
+{
+  "$schema": "../../../node_modules/@ringcentral/mfe-shared/site-schema.json",
+  "name": "@example/app1",
+  "defaultMode": "a",
+  "prefix": {
+    "a": "example-app1-a",
+    "b": "example-app1-b"
+  },
+  "registry": {
+    "a": "http://localhost:3000/app1-registry-a.js",
+    "b": "http://localhost:3000/app1-registry-b.js"
+  },
+  "registryAutoFetch": true,
+  "registryType": "jsonp",
+  "optimization": {
+    "injectMeta": ["main"]
+  },
+  "dependencies": {
+    "@example/app2": {
+      "entry": "http://localhost:3002/remoteEntry.js",
+      "version": ">1.0.0"
+    },
+    "@example/app3": "http://localhost:3003/remoteEntry.js"
+  },
+  "exposes": {
+    "./src/bootstrap": "./src/bootstrap"
+  },
+  "shared": {
+    "react": {
+      "singleton": true
+    },
+    "react-dom": {
+      "singleton": true
+    },
+    "@ringcentral/mfe-sentry": {
+      "singleton": true
+    },
+    "@ringcentral/mfe-logger": {
+      "singleton": true
+    }
+  }
+}

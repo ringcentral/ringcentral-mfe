@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": ["src/**/*", "../../global.d.ts", "shared/*.ts"],
+  "exclude": ["sw/**/*", "webpack-plugin/**/*"],
+  "compilerOptions": {
+    "module": "ES2015"
+  }
+}

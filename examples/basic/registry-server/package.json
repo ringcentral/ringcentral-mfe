@@ -1,0 +1,14 @@
+{
+  "name": "registry-server",
+  "version": "0.1.0-alpha.0",
+  "devDependencies": {
+    "http-server": "14.1.1"
+  },
+  "scripts": {
+    "start": "http-server registry -p 3000",
+    "build": "",
+    "serve": "yarn start",
+    "clean": ""
+  },
+  "dependencies": {}
+}

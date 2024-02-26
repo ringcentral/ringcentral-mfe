@@ -1,0 +1,30 @@
+{
+  "name": "@ringcentral/mfe-sentry",
+  "version": "0.1.0",
+  "description": "",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "typings": "dist/index.d.ts",
+  "scripts": {
+    "build": "yarn build:code",
+    "build:code": "rollup -c ../../rollup.config.ts --configPlugin typescript",
+    "tsc": "tsc --noEmit",
+    "ci:test": "jest",
+    "watch": "yarn build -w",
+    "clean": "rimraf dist",
+    "prebuild": "yarn clean",
+    "test": "jest --watch",
+    "release": "yarn build && node ../../scripts/build/build-npm-package.js ./npm-package-options.js"
+  },
+  "keywords": [],
+  "author": "RingCentral",
+  "license": "MIT",
+  "peerDependencies": {
+    "@ringcentral/mfe-shared": "^0.0.2-alpha.1"
+  },
+  "dependencies": {
+    "@ringcentral/mfe-shared": "^0.1.0",
+    "@sentry/browser": "^7.99.0",
+    "@sentry/tracing": "^7.99.0"
+  }
+}

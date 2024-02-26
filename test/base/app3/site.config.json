@@ -1,0 +1,15 @@
+{
+  "$schema": "../../../node_modules/@ringcentral/mfe-shared/site-schema.json",
+  "name": "@base/app3",
+  "exposes": {
+    "./src/bootstrap": "./src/bootstrap"
+  },
+  "shared": {
+    "react": {
+      "singleton": true
+    },
+    "react-dom": {
+      "singleton": true
+    }
+  }
+}

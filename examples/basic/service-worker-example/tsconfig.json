@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "sourceMap": true,
+    "strict": true,
+    "jsx": "react",
+    "module": "ESNext",
+    "moduleResolution": "nodenext",
+    "esModuleInterop": true,
+    "lib": ["WebWorker"],
+    "target": "ESNext"
+  },
+  "include": ["src/**/*", "sw/sw.ts"]
+}

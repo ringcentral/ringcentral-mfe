@@ -1,0 +1,20 @@
+{
+  "name": "basic",
+  "private": true,
+  "workspaces": [
+    "app1",
+    "app2",
+    "app3",
+    "registry-server",
+    "service-worker-example"
+  ],
+  "scripts": {
+    "start": "lerna run --parallel start",
+    "build": "lerna run build",
+    "serve": "lerna run --parallel serve",
+    "clean": "lerna run --parallel clean"
+  },
+  "devDependencies": {
+    "lerna": "^5.6.2"
+  }
+}

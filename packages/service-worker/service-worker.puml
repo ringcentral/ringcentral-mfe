@@ -1,0 +1,46 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+package "@ringcentral/mfe-service-worker" {
+
+enum CacheStatus {
+  UN_CACHE
+  CACHING
+  CACHED
+}
+
+class CacheController {
+  + name: string
+  + version: string
+  + manifestRelativePath: string
+  + cacheStatus: CacheStatus
+
+  async cacheAssets();
+  async cleanCaches();
+  async cleanupOutdatedCaches();
+}
+
+class SubAppServiceWorkerManager {
+  - subAppCacheControllers: Map<string, CacheController>
+
+  listener()
+  unListener()
+
+  - async registerSubApp(name: string, version: string, manifestRelativePath: string)
+  - async emitRegisterStatus(name: string, cacheStatus: CacheStatus)
+  - async getSubAppRegisterStatus(name: string)
+}
+
+Object utils {
+  registerSubApp(name: string, version: string, manifestRelativePath: string)
+  unRegisterSubApp(name: string, version: string, manifestRelativePath: string)
+  getSubAppRegisterStatus(name: string)
+}
+
+SubAppServiceWorkerManager o-- CacheController
+
+}
+
+
+
+@enduml

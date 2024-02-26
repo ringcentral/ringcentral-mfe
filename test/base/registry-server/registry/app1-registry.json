@@ -1,0 +1,10 @@
+{
+  "@base/app2": {
+    "entry": "http://localhost:4002/remoteEntry.js?remote=true",
+    "version": "1.0.1"
+  },
+  "@base/app3": {
+    "entry": "http://localhost:4003/remoteEntry.js?remote=true",
+    "version": "1.0.0"
+  }
+}

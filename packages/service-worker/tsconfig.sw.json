@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": ["../../global.d.ts", "sw/*.ts", "shared/*.ts"],
+  "exclude": ["src/**/*"],
+  "compilerOptions": {
+    "module": "ES2015",
+    "lib": ["WebWorker"]
+  }
+}

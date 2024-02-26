@@ -1,0 +1,35 @@
+{
+  "name": "@ringcentral/mfe-react",
+  "version": "0.1.0",
+  "description": "",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "typings": "dist/index.d.ts",
+  "scripts": {
+    "build": "rollup -c ../../rollup.config.ts --configPlugin typescript",
+    "build:doc": "rimraf docs && typedoc --out docs src/index.ts --plugin typedoc-plugin-markdown --readme none --skipErrorChecking",
+    "tsc": "tsc --noEmit",
+    "ci:test": "jest",
+    "watch": "",
+    "clean": "rimraf dist",
+    "prebuild": "yarn clean",
+    "test": "jest --watch",
+    "release": "yarn build && node ../../scripts/build/build-npm-package.js ./npm-package-options.js"
+  },
+  "keywords": [],
+  "author": "RingCentral",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": "^17.0.2"
+  },
+  "dependencies": {
+    "@ringcentral/mfe-core": "^0.1.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^12.1.5",
+    "@types/react": "^17.0.52",
+    "jsdoc-tests": "^1.1.1",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2"
+  }
+}

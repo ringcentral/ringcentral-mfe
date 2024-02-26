@@ -1,0 +1,27 @@
+{
+  "name": "@ringcentral/mfe-shared",
+  "version": "0.1.0",
+  "description": "",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "typings": "dist/index.d.ts",
+  "scripts": {
+    "build": "yarn build:code && yarn build:schema",
+    "build:code": "rollup -c ../../rollup.config.ts --configPlugin typescript",
+    "build:schema": "typescript-json-schema src/interface.ts SiteConfig -o site-schema.json --ignoreErrors",
+    "tsc": "tsc --noEmit",
+    "ci:test": "jest",
+    "watch": "yarn build -w",
+    "clean": "rimraf dist",
+    "prebuild": "yarn clean",
+    "test": "jest --watch",
+    "release": "yarn build && node ../../scripts/build/build-npm-package.js ./npm-package-options.js"
+  },
+  "keywords": [],
+  "author": "RingCentral",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript-json-schema": "0.54.0",
+    "webpack": "^5.75.0"
+  }
+}

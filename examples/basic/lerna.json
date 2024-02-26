@@ -1,0 +1,11 @@
+{
+  "packages": [
+    "app1",
+    "app2",
+    "app3",
+    "registry-server",
+    "service-worker-example"
+  ],
+  "version": "independent",
+  "useWorkspaces": true
+}

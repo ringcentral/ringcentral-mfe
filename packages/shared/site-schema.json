@@ -1,0 +1,494 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "definitions": {
+        "Dependency": {
+            "properties": {
+                "dependencyVersion": {
+                    "description": "The remote entry dependency version rule",
+                    "type": "string"
+                },
+                "entry": {
+                    "description": "The remote entry url",
+                    "type": "string"
+                },
+                "meta": {
+                    "$ref": "#/definitions/Record<string,any>",
+                    "description": "The remote entry meta data"
+                },
+                "version": {
+                    "description": "The remote entry version",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "ExposesConfig": {
+            "description": "Advanced configuration for modules that should be exposed by this container.",
+            "properties": {
+                "import": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ],
+                    "description": "Request to a module that should be exposed by this container."
+                },
+                "name": {
+                    "description": "Custom chunk name for the exposed module.",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "ExposesObject": {
+            "additionalProperties": {
+                "anyOf": [
+                    {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array"
+                    },
+                    {
+                        "$ref": "#/definitions/ExposesConfig"
+                    },
+                    {
+                        "type": "string"
+                    }
+                ]
+            },
+            "description": "Modules that should be exposed by this container. Property names are used as public paths.",
+            "type": "object"
+        },
+        "LibraryCustomUmdCommentObject": {
+            "description": "Set explicit comments for `commonjs`, `commonjs2`, `amd`, and `root`.",
+            "properties": {
+                "amd": {
+                    "description": "Set comment for `amd` section in UMD.",
+                    "type": "string"
+                },
+                "commonjs": {
+                    "description": "Set comment for `commonjs` (exports) section in UMD.",
+                    "type": "string"
+                },
+                "commonjs2": {
+                    "description": "Set comment for `commonjs2` (module.exports) section in UMD.",
+                    "type": "string"
+                },
+                "root": {
+                    "description": "Set comment for `root` (global variable) section in UMD.",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "LibraryCustomUmdObject": {
+            "description": "Description object for all UMD variants of the library name.",
+            "properties": {
+                "amd": {
+                    "description": "Name of the exposed AMD library in the UMD.",
+                    "type": "string"
+                },
+                "commonjs": {
+                    "description": "Name of the exposed commonjs export in the UMD.",
+                    "type": "string"
+                },
+                "root": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ],
+                    "description": "Name of the property exposed globally by a UMD library."
+                }
+            },
+            "type": "object"
+        },
+        "LibraryOptions": {
+            "description": "Options for library.",
+            "properties": {
+                "amdContainer": {
+                    "description": "Add a container for define/require functions in the AMD module.",
+                    "type": "string"
+                },
+                "auxiliaryComment": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/definitions/LibraryCustomUmdCommentObject"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ],
+                    "description": "Add a comment in the UMD wrapper."
+                },
+                "export": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ],
+                    "description": "Specify which export should be exposed as library."
+                },
+                "name": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "$ref": "#/definitions/LibraryCustomUmdObject"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ],
+                    "description": "The name of the library (some types allow unnamed libraries too)."
+                },
+                "type": {
+                    "description": "Type of library (types included by default are 'var', 'module', 'assign', 'assign-properties', 'this', 'window', 'self', 'global', 'commonjs', 'commonjs2', 'commonjs-module', 'commonjs-static', 'amd', 'amd-require', 'umd', 'umd2', 'jsonp', 'system', but others might be added by plugins).",
+                    "type": "string"
+                },
+                "umdNamedDefine": {
+                    "description": "If `output.libraryTarget` is set to umd and `output.library` is set, setting this to true will name the AMD module.",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "Record<string,any>": {
+            "type": "object"
+        },
+        "Record<string,string>": {
+            "type": "object"
+        },
+        "RegExp": {
+            "properties": {
+                "dotAll": {
+                    "type": "boolean"
+                },
+                "flags": {
+                    "type": "string"
+                },
+                "global": {
+                    "type": "boolean"
+                },
+                "ignoreCase": {
+                    "type": "boolean"
+                },
+                "lastIndex": {
+                    "type": "number"
+                },
+                "multiline": {
+                    "type": "boolean"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "sticky": {
+                    "type": "boolean"
+                },
+                "unicode": {
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "RegistryType": {
+            "enum": [
+                "fetch",
+                "jsonp"
+            ],
+            "type": "string"
+        },
+        "SharedConfig": {
+            "description": "Advanced configuration for modules that should be shared in the share scope.",
+            "properties": {
+                "eager": {
+                    "description": "Include the provided and fallback module directly instead behind an async request. This allows to use this shared module in initial load too. All possible shared modules need to be eager too.",
+                    "type": "boolean"
+                },
+                "import": {
+                    "anyOf": [
+                        {
+                            "enum": [
+                                false
+                            ],
+                            "type": "boolean"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ],
+                    "description": "Provided module that should be provided to share scope. Also acts as fallback module if no shared module is found in share scope or version isn't valid. Defaults to the property name."
+                },
+                "packageName": {
+                    "description": "Package name to determine required version from description file. This is only needed when package name can't be automatically determined from request.",
+                    "type": "string"
+                },
+                "requiredVersion": {
+                    "anyOf": [
+                        {
+                            "enum": [
+                                false
+                            ],
+                            "type": "boolean"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ],
+                    "description": "Version requirement from module in share scope."
+                },
+                "shareKey": {
+                    "description": "Module is looked up under this key from the share scope.",
+                    "type": "string"
+                },
+                "shareScope": {
+                    "description": "Share scope name.",
+                    "type": "string"
+                },
+                "singleton": {
+                    "description": "Allow only a single version of the shared module in share scope (disabled by default).",
+                    "type": "boolean"
+                },
+                "strictVersion": {
+                    "description": "Do not accept shared module if version is not valid (defaults to yes, if local fallback module is available and shared module is not a singleton, otherwise no, has no effect if there is no required version specified).",
+                    "type": "boolean"
+                },
+                "version": {
+                    "anyOf": [
+                        {
+                            "enum": [
+                                false
+                            ],
+                            "type": "boolean"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ],
+                    "description": "Version of the provided module. Will replace lower matching versions, but not higher."
+                }
+            },
+            "type": "object"
+        },
+        "SharedObject": {
+            "additionalProperties": {
+                "anyOf": [
+                    {
+                        "$ref": "#/definitions/SharedConfig"
+                    },
+                    {
+                        "type": "string"
+                    }
+                ]
+            },
+            "description": "Modules that should be shared in the share scope. Property names are used to match requested modules in this compilation. Relative requests are resolved, module requests are matched unresolved, absolute paths will match resolved requests. A trailing slash will match all requests with this prefix. In this case shareKey must also have a trailing slash.",
+            "type": "object"
+        }
+    },
+    "properties": {
+        "defaultMode": {
+            "description": "The site default mode",
+            "type": "string"
+        },
+        "dependencies": {
+            "additionalProperties": {
+                "anyOf": [
+                    {
+                        "$ref": "#/definitions/Dependency"
+                    },
+                    {
+                        "type": "string"
+                    }
+                ]
+            },
+            "description": "The site micro front-end dependencies",
+            "type": "object"
+        },
+        "exposes": {
+            "anyOf": [
+                {
+                    "$ref": "#/definitions/ExposesObject"
+                },
+                {
+                    "items": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/definitions/ExposesObject"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ]
+                    },
+                    "type": "array"
+                }
+            ],
+            "description": "Modules that should be exposed by this container. When provided, property name is used as public name, otherwise public name is automatically inferred from request."
+        },
+        "filename": {
+            "description": "The filename of the container as relative path inside the `output.path` directory.",
+            "type": "string"
+        },
+        "library": {
+            "$ref": "#/definitions/LibraryOptions",
+            "description": "Options for library."
+        },
+        "maxRetries": {
+            "description": "optional value to set the maximum number of retries to load the module remote script.\nThe default is 1.",
+            "type": "number"
+        },
+        "name": {
+            "description": "The name of the container.",
+            "type": "string"
+        },
+        "optimization": {
+            "description": "The optimization options for site federation plugin",
+            "properties": {
+                "injectMeta": {
+                    "description": "Add MFE meta for all modules matching any of these conditions.",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/definitions/RegExp"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ]
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object"
+        },
+        "prefix": {
+            "anyOf": [
+                {
+                    "$ref": "#/definitions/Record<string,string>"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "description": "The site prefix, support dynamic mode"
+        },
+        "registry": {
+            "anyOf": [
+                {
+                    "$ref": "#/definitions/Record<string,string>"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "description": "The registry server, support dynamic mode"
+        },
+        "registryAutoFetch": {
+            "description": "Whether to automatically fetch registry, default is false",
+            "type": "boolean"
+        },
+        "registryType": {
+            "$ref": "#/definitions/RegistryType",
+            "description": "The registry type, 'jsonp' or 'fetch', default is 'fetch'"
+        },
+        "remoteType": {
+            "description": "The external type of the remote containers.",
+            "enum": [
+                "amd",
+                "amd-require",
+                "assign",
+                "commonjs",
+                "commonjs-module",
+                "commonjs-static",
+                "commonjs2",
+                "global",
+                "import",
+                "jsonp",
+                "module",
+                "node-commonjs",
+                "promise",
+                "script",
+                "self",
+                "system",
+                "this",
+                "umd",
+                "umd2",
+                "var",
+                "window"
+            ],
+            "type": "string"
+        },
+        "retryDelay": {
+            "description": "Optional number value to set the delay time in milliseconds to try to load the module remote script again.\nThe default value is 1000.",
+            "type": "number"
+        },
+        "runtime": {
+            "anyOf": [
+                {
+                    "enum": [
+                        false
+                    ],
+                    "type": "boolean"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "description": "The name of the runtime chunk. If set a runtime chunk with this name is created or an existing entrypoint is used as runtime."
+        },
+        "shareScope": {
+            "description": "Share scope name used for all shared modules (defaults to 'default').",
+            "type": "string"
+        },
+        "shared": {
+            "anyOf": [
+                {
+                    "$ref": "#/definitions/SharedObject"
+                },
+                {
+                    "items": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/definitions/SharedObject"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ]
+                    },
+                    "type": "array"
+                }
+            ],
+            "description": "Modules that should be shared in the share scope. When provided, property names are used to match requested modules in this compilation."
+        },
+        "version": {
+            "description": "The site version",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}
+

@@ -1,0 +1,23 @@
+{
+  "$schema": "../../../node_modules/@ringcentral/mfe-shared/site-schema.json",
+  "name": "@base/app1",
+  "registry": "http://localhost:4000/app1-registry.json",
+  "registryAutoFetch": true,
+  "dependencies": {
+    "@base/app2": {
+      "entry": "http://localhost:4002/remoteEntry.js",
+      "version": ">1.0.0"
+    }
+  },
+  "exposes": {
+    "./src/bootstrap": "./src/bootstrap"
+  },
+  "shared": {
+    "react": {
+      "singleton": true
+    },
+    "react-dom": {
+      "singleton": true
+    }
+  }
+}

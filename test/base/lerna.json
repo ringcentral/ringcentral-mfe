@@ -1,0 +1,5 @@
+{
+  "packages": ["app1", "app2", "app3", "registry-server"],
+  "version": "independent",
+  "useWorkspaces": true
+}
