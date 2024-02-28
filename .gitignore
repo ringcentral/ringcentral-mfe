@@ -107,7 +107,5 @@ dist
 packages/**/build/
 packages/**/dist/
 dist/
-.vscode/symbols.json
-.vscode/settings.json
 jest-html-report
 .idea/
