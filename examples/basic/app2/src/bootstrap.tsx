@@ -3,7 +3,11 @@ import ReactDOM from 'react-dom';
 import { expose, getMeta } from '@ringcentral/mfe-react';
 import { getGlobalTransport, PickListeners } from '@ringcentral/mfe-transport';
 import { useSentry } from '@ringcentral/mfe-sentry';
-import { useLogger, ConsoleTransport, StorageTransport } from '@ringcentral/mfe-logger';
+import {
+  useLogger,
+  ConsoleTransport,
+  StorageTransport,
+} from '@ringcentral/mfe-logger';
 
 import type App3 from '@example/app3/src/bootstrap';
 import App from './App';

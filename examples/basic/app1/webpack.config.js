@@ -12,6 +12,9 @@ module.exports = {
   },
   mode: 'development',
   devServer: {
+    client: {
+      overlay: false,
+    },
     static: path.join(__dirname, 'dist'),
     port: 3001,
   },

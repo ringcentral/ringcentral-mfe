@@ -13,6 +13,9 @@ module.exports = {
   entry: './src/index',
   mode: 'development',
   devServer: {
+    client: {
+      overlay: false,
+    },
     static: path.join(__dirname, 'dist'),
     port: 3003,
     allowedHosts: 'all',
