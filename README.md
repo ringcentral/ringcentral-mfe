@@ -177,3 +177,8 @@ yarn commit
 ```sh
 yarn ci:test
 ```
+
+
+## License
+
+`RingCentral Micro Frontends` is [MIT licensed](https://github.com/ringcentral/ringcentral-mfe/blob/main/LICENSE).
