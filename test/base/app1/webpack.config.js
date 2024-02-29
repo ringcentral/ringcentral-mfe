@@ -11,6 +11,12 @@ module.exports = {
   devServer: {
     static: path.join(__dirname, 'dist'),
     port: 4001,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers':
+        'X-Requested-With, content-type, Authorization',
+    },
   },
   output: {
     publicPath: 'auto',
@@ -52,9 +58,7 @@ module.exports = {
     ],
   },
   plugins: [
-    new ModuleFederationPlugin({
-      version: packageJson.version,
-    }),
+    new ModuleFederationPlugin(),
     new DefinePlugin({
       __DEV__: JSON.stringify(true),
     }),

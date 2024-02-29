@@ -2,63 +2,15 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable global-require */
 /* eslint-disable import/no-dynamic-require */
-import path from 'path';
 import type {
   SiteConfig,
-  Options,
   ModuleFederationConfig,
-  SiteConfigFile,
   ModuleFederationPluginOptions,
 } from '@ringcentral/mfe-shared';
 import { getGlobal, identifierContainer } from '@ringcentral/mfe-shared';
-import { getEnv } from './getEnv';
 import { makeRemoteScript } from './make';
 
 const DEFAULT_REMOTE_ENTRY = 'remoteEntry.js';
-
-export const getSiteConfig = ({ overrides = {} }: Options = {}): SiteConfig => {
-  // TODO: implement more config options
-  const rootPath = process.cwd();
-  try {
-    const configFile = path.join(rootPath, 'site.config');
-    const rawConfig: SiteConfigFile = require(configFile);
-    const config =
-      typeof rawConfig === 'object' ? rawConfig : rawConfig(getEnv());
-    const {
-      $schema,
-      dependencies = {},
-      ...siteConfig
-    }: SiteConfig & {
-      $schema?: string;
-    } = {
-      ...config,
-      ...overrides,
-    };
-    Object.entries(dependencies).forEach(([key, value]) => {
-      if (typeof value === 'string') {
-        dependencies[key] = {
-          entry: value,
-          version: '*',
-          dependencyVersion: '*',
-        };
-        return;
-      }
-      if (typeof value !== 'object' || typeof value.entry !== 'string') {
-        throw new Error(
-          `[MFE] invalid dependencies config for ${key} in site.config`
-        );
-      }
-      value.dependencyVersion = value.dependencyVersion ?? value.version;
-    });
-    return {
-      ...siteConfig,
-      dependencies,
-    };
-  } catch (e) {
-    console.error(`[MFE] make sure to set site config  in ${rootPath}`);
-    throw e;
-  }
-};
 
 export const getModuleFederationConfig = (
   siteConfig: SiteConfig
@@ -75,6 +27,10 @@ export const getModuleFederationConfig = (
     exposes,
     optimization,
     prefix,
+    dependenciesLock,
+    links,
+    meta,
+    remoteEntry,
     ...restConfig
   } = siteConfig;
   const remotes: ModuleFederationPluginOptions['remotes'] = {};

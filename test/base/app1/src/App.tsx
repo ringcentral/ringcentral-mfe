@@ -7,7 +7,7 @@ import {
   useIframe as useCommonIframe,
   useWebComponents as useCommonWebComponents,
 } from '@ringcentral/mfe-core';
-import type App2 from '@base/app2/src/bootstrap';
+import type App2 from 'app2/src/bootstrap';
 import {
   useApp,
   useIframe,
@@ -103,8 +103,8 @@ const App = () => {
             path="/"
             component={() => {
               const App2Component = useApp({
-                name: '@base/app2',
-                loader: () => import('@base/app2/src/bootstrap'),
+                name: 'app2',
+                loader: () => import('app2/src/bootstrap'),
               });
               return (
                 <div>
@@ -120,19 +120,19 @@ const App = () => {
               const ref = useRef<HTMLDivElement>(null);
               useEffect(() => {
                 let callback: () => void;
-                dynamicLoad<typeof App2>('@base/app2/src/bootstrap').then(
+                dynamicLoad<typeof App2>('app2/src/bootstrap').then(
                   ({ default: { init, render } }) => {
                     init();
                     callback = render(ref.current)!;
                   }
                 );
                 // useCommonApp({
-                //   name: '@base/app2',
+                //   name: 'app2',
                 //   target: ref.current!,
-                //   // loader: () => import('@base/app2/src/bootstrap'),
+                //   // loader: () => import('app2/src/bootstrap'),
                 //   loader: () =>
                 //     dynamicLoad<typeof App2>(
-                //       '@base/app2/src/bootstrap',
+                //       'app2/src/bootstrap',
                 //       'http://localhost:4002/remoteEntry.js'
                 //     ),
                 // });
@@ -155,7 +155,7 @@ const App = () => {
               // useEffect(() => {
               //   dynamicLoad<typeof App2>(
               //     'http://localhost:4002/remoteEntry.js',
-              //     '@base/app2/src/bootstrap'
+              //     'app2/src/bootstrap'
               //   ).then(({ default: { init, render } }) => {
               //     init();
               //     render(ref.current);
@@ -169,11 +169,11 @@ const App = () => {
               // );
 
               const App2Component = useApp({
-                name: '@base/app2',
-                // loader: () => import('@base/app2/src/bootstrap'),
+                name: 'app2',
+                // loader: () => import('app2/src/bootstrap'),
                 loader: () =>
                   dynamicLoad<typeof App2>(
-                    '@base/app2/src/bootstrap',
+                    'app2/src/bootstrap',
                     'http://localhost:4002/remoteEntry.js'
                   ),
               });
@@ -192,7 +192,7 @@ const App = () => {
               const ref = useRef(null);
               useEffect(() => {
                 useCommonIframe({
-                  name: '@base/app2',
+                  name: 'app2',
                   target: ref.current!,
                   attrs: {
                     height: '100%',
@@ -211,7 +211,7 @@ const App = () => {
             path="/use-iframe-with-react"
             component={() => {
               const App2Iframe = useIframe({
-                name: '@base/app2',
+                name: 'app2',
                 attrs: {
                   height: '100%',
                 },
@@ -231,8 +231,8 @@ const App = () => {
               const ref = useRef<HTMLDivElement>(null);
               useEffect(() => {
                 useCommonWebComponents({
-                  name: '@base/app2',
-                  loader: () => import('@base/app2/src/bootstrap'),
+                  name: 'app2',
+                  loader: () => import('app2/src/bootstrap'),
                   target: ref.current!,
                   shadowMode: 'open',
                   useShadowDOM: false,
@@ -250,10 +250,10 @@ const App = () => {
             path="/use-web-components-with-react"
             component={() => {
               const App2WebComponentWithReact = useWebComponents({
-                name: '@base/app2',
+                name: 'app2',
                 useShadowDOM: true,
                 shadowMode: 'closed',
-                loader: () => import('@base/app2/src/bootstrap'),
+                loader: () => import('app2/src/bootstrap'),
               });
               return (
                 <div>

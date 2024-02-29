@@ -182,6 +182,9 @@
         "Record<string,string>": {
             "type": "object"
         },
+        "Record<string,{version:string;remoteEntry:string;links?:Record<string,string>;meta?:Record<string,any>;}>": {
+            "type": "object"
+        },
         "RegExp": {
             "properties": {
                 "dotAll": {
@@ -217,7 +220,8 @@
         "RegistryType": {
             "enum": [
                 "fetch",
-                "jsonp"
+                "jsonp",
+                "server"
             ],
             "type": "string"
         },
@@ -327,6 +331,9 @@
             "description": "The site micro front-end dependencies",
             "type": "object"
         },
+        "dependenciesLock": {
+            "$ref": "#/definitions/Record<string,{version:string;remoteEntry:string;links?:Record<string,string>;meta?:Record<string,any>;}>"
+        },
         "exposes": {
             "anyOf": [
                 {
@@ -356,9 +363,15 @@
             "$ref": "#/definitions/LibraryOptions",
             "description": "Options for library."
         },
+        "links": {
+            "$ref": "#/definitions/Record<string,string>"
+        },
         "maxRetries": {
             "description": "optional value to set the maximum number of retries to load the module remote script.\nThe default is 1.",
             "type": "number"
+        },
+        "meta": {
+            "$ref": "#/definitions/Record<string,any>"
         },
         "name": {
             "description": "The name of the container.",
@@ -413,6 +426,9 @@
         "registryType": {
             "$ref": "#/definitions/RegistryType",
             "description": "The registry type, 'jsonp' or 'fetch', default is 'fetch'"
+        },
+        "remoteEntry": {
+            "type": "string"
         },
         "remoteType": {
             "description": "The external type of the remote containers.",

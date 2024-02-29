@@ -1,5 +1,5 @@
 {
-  "name": "@base/app3",
+  "name": "app3",
   "version": "0.1.0-alpha.0",
   "devDependencies": {
     "@babel/core": "^7.20.2",

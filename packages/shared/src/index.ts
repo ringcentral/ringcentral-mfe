@@ -7,3 +7,5 @@ export * from './fetchWithJsonp';
 export * from './satisfiesVersion';
 export * from './logger';
 export * from './isSatisfied';
+export * from './getConfig';
+export * from './getEnv';

@@ -3,6 +3,8 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable prefer-destructuring */
 import { BannerPlugin, container, Compiler, DefinePlugin } from 'webpack';
+import path from 'path';
+import yargs from 'yargs';
 import {
   getEntryFromRegistry,
   fetchWithJsonp,
@@ -15,10 +17,13 @@ import {
   SiteConfig,
   isSatisfied,
   satisfiesVersion,
+  getSiteConfig,
+  getEnv,
 } from '@ringcentral/mfe-shared';
-import { getModuleFederationConfig, getSiteConfig } from './getConfig';
-import { getEnv } from './getEnv';
+import { getModuleFederationConfig } from './getConfig';
 import { makeBannerScript } from './make';
+
+const { env } = yargs.array('env').default('env', []).argv as { env: string[] };
 
 // use `--env spa` for webpack cli
 const SPA_CLI = 'spa';
@@ -61,7 +66,9 @@ class ModuleFederationPlugin extends container.ModuleFederationPlugin {
     siteExtraConfig?: SiteOverridableConfig,
     externalOptions?: ModuleFederationPluginOptions
   ) {
-    const siteConfig = getSiteConfig({
+    const rootPath = process.cwd();
+    const configFile = path.join(rootPath, 'site.config');
+    const siteConfig = getSiteConfig(configFile, env, {
       overrides: siteExtraConfig,
     });
     const moduleFederationConfig = getModuleFederationConfig(siteConfig);
@@ -99,7 +106,7 @@ class ModuleFederationPlugin extends container.ModuleFederationPlugin {
   }
 
   apply(compiler: Compiler) {
-    const isSPAbuild = getEnv()[SPA_CLI];
+    const isSPAbuild = getEnv(env)[SPA_CLI];
     this.bannerPlugin.apply.call(this.bannerPlugin, compiler);
     this.definePlugin.apply.call(this.definePlugin, compiler);
     if (isSPAbuild) return;

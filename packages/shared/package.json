@@ -38,6 +38,7 @@
   "license": "MIT",
   "devDependencies": {
     "typescript-json-schema": "0.54.0",
-    "webpack": "^5.75.0"
+    "webpack": "^5.75.0",
+    "yargs": "17.6.2"
   }
 }

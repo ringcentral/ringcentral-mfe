@@ -1,13 +1,13 @@
 {
   "$schema": "../../../node_modules/@ringcentral/mfe-shared/site-schema.json",
-  "name": "@base/app1",
-  "registry": "http://localhost:4000/app1-registry.json",
+  "name": "app1",
+  "version": "0.0.1",
+  "remoteEntry": "http://localhost:4001/remoteEntry.js",
+  "registryType": "server",
+  "registry": "http://10.32.57.72:8080",
   "registryAutoFetch": true,
   "dependencies": {
-    "@base/app2": {
-      "entry": "http://localhost:4002/remoteEntry.js",
-      "version": ">1.0.0"
-    }
+    "app2": ">=0.0.1"
   },
   "exposes": {
     "./src/bootstrap": "./src/bootstrap"
@@ -19,5 +19,25 @@
     "react-dom": {
       "singleton": true
     }
+  },
+  "dependenciesLock": {
+    "app2": {
+      "version": "0.0.2",
+      "remoteEntry": "http://localhost:4002/remoteEntry.js"
+    },
+    "app3": {
+      "version": "0.0.1",
+      "remoteEntry": "http://localhost:4003/remoteEntry.js",
+      "meta": {
+        "c": 1
+      }
+    }
+  },
+  "meta": {
+    "a": 1
+  },
+  "links": {
+    "playgroundUrl": "http://localhost:3001/",
+    "specUrl": "http://localhost:3001/spec"
   }
 }

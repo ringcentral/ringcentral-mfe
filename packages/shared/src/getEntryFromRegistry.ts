@@ -112,11 +112,26 @@ export function getEntryFromRegistry(
         .then((response) => response!.json());
     } else if (registryType === 'jsonp') {
       fetchRawPromise = fetchWithJsonp<RegistryResponse>(getGlobal, url, name);
+    } else if (registryType === 'server') {
+      fetchRawPromise = fetch(
+        `${registry}/api/apps/${main}/releases/${mainVersion}`
+      )
+        .catch((error) => {
+          console.error(`[MFE] Failed to fetch remote entry: ${url}`);
+          console.error(error);
+        })
+        .then((response) => response!.json())
+        .then((data) => {
+          return data.dependenciesLock;
+        });
     } else {
       throw new Error(`[MFE] Invalid registry type: ${registryType}`);
     }
     fetchPromise = fetchRawPromise.then((data) => {
       const remoteData = data?.[dependency];
+      console.log('remoteData====', remoteData);
+      // @ts-ignore
+      remoteData.entry = remoteData.remoteEntry;
       if (
         remoteData &&
         isSatisfied(satisfiesVersion, remoteData, dependencyVersion)

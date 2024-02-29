@@ -1,19 +1,24 @@
 {
   "$schema": "../../../node_modules/@ringcentral/mfe-shared/site-schema.json",
-  "name": "app3",
-  "version": "0.0.1",
-  "remoteEntry": "http://localhost:4003/remoteEntry.js",
+  "name": "app2",
+  "version": "0.0.2",
+  "remoteEntry": "http://localhost:4005/remoteEntry.js",
   "registryType": "server",
   "registry": "http://10.32.57.72:8080",
+  "dependencies": {
+    "app3": ">= 0.0.1"
+  },
   "exposes": {
     "./src/bootstrap": "./src/bootstrap"
   },
   "shared": {
-    "react": {
-      "singleton": true
-    },
-    "react-dom": {
-      "singleton": true
+    "react": { "singleton": true },
+    "react-dom": { "singleton": true }
+  },
+  "dependenciesLock": {
+    "app3": {
+      "version": "0.0.1",
+      "remoteEntry": "http://localhost:4003/remoteEntry.js"
     }
   },
   "meta": {

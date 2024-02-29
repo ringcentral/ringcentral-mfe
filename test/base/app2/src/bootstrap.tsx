@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import { expose, getMeta } from '@ringcentral/mfe-react';
 import { getGlobalTransport, PickListeners } from '@ringcentral/mfe-transport';
-import type App3 from '@base/app3/src/bootstrap';
+import type App3 from 'app3/src/bootstrap';
 import App from './App';
 
 console.log(JSON.stringify(getMeta(), null, 2));

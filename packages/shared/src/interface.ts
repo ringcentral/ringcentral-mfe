@@ -40,7 +40,7 @@ export type ModuleFederationPluginOptions = ConstructorParameters<
   typeof container.ModuleFederationPlugin
 >[0];
 
-export type RegistryType = 'fetch' | 'jsonp';
+export type RegistryType = 'fetch' | 'jsonp' | 'server';
 
 export interface EntryResult {
   /**
@@ -116,6 +116,18 @@ export interface SiteConfig
      */
     injectMeta?: Rule[];
   };
+  dependenciesLock?: Record<
+    string,
+    {
+      version: string;
+      remoteEntry: string;
+      links?: Record<string, string>;
+      meta?: Record<string, any>;
+    }
+  >;
+  links?: Record<string, string>;
+  meta?: Record<string, any>;
+  remoteEntry?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface

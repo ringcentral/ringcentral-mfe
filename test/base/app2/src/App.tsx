@@ -6,7 +6,7 @@ const App: FC<{ version?: string }> = () => {
   // @ts-ignore
   const App3Component = !global.isIT
     ? useIframe({
-        name: '@base/app3',
+        name: 'app3',
         attrs: {
           height: '100%',
         },
@@ -15,7 +15,7 @@ const App: FC<{ version?: string }> = () => {
   return (
     <div style={{ border: '3px solid blue', padding: '3px' }}>
       <h1>Nested</h1>
-      <h2>App 2</h2>
+      <h2>App 2: version: 0.0.1</h2>
       <ButtonContainer />
       <br />
       <App3Component />

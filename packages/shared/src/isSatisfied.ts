@@ -12,7 +12,7 @@ export const isSatisfied = (
       ? satisfiesVersion(options.version!, dependencyVersion)
       : matchResult;
   } catch (e) {
-    //
+    console.log('e', e);
   }
   return !!(
     options?.entry &&
