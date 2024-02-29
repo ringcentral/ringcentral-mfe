@@ -4,9 +4,5 @@ module.exports = {
       from: './README.md',
       toDist: './README.md',
     },
-    {
-      from: './CHANGELOG.md',
-      toDist: './CHANGELOG.md',
-    },
   ],
 };

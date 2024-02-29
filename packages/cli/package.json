@@ -1,6 +1,6 @@
 {
   "name": "@ringcentral/mfe-cli",
-  "version": "0.1.0-alpha.83",
+  "version": "0.1.0",
   "description": "",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -32,6 +32,6 @@
     "yargs": "17.6.2"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC"
+  "author": "RingCentral",
+  "license": "MIT"
 }
