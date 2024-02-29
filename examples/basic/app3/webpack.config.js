@@ -1,3 +1,4 @@
+/* eslint-disable import/order */
 /* eslint-disable prefer-destructuring */
 /* eslint-disable @typescript-eslint/no-var-requires */
 const { DefinePlugin } = require('webpack');

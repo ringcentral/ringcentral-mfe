@@ -2,7 +2,10 @@
 const { DefinePlugin } = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const path = require('path');
-const { ModuleFederationPlugin, insertStyle } = require('@ringcentral/mfe-builder');
+const {
+  ModuleFederationPlugin,
+  insertStyle,
+} = require('@ringcentral/mfe-builder');
 const packageJson = require('./package.json');
 
 module.exports = {
