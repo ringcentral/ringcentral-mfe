@@ -1,6 +1,20 @@
 # @ringcentral/mfe-sentry
 
-Note: Sentry does not fully support micro-frontends, and the library cannot capture default errors in fetch() requests of sub-applications.
+![Node CI](https://github.com/ringcentral/ringcentral-mfe/workflows/Node%20CI/badge.svg)
+
+A micro frontends framework for building Web applications
+
+## Usage
+
+```bash
+npm install @ringcentral/mfe-sentry
+# or
+yarn add @ringcentral/mfe-sentry
+```
+
+You can visit [https://github.com/ringcentral/ringcentral-mfe](https://github.com/ringcentral/ringcentral-mfe) for more documentation.
+
+> Note: Sentry does not fully support micro-frontends, and the library cannot capture default errors in fetch() requests of sub-applications.
 
 - Sentry 2023 and the JavaScript SDK: https://github.com/getsentry/sentry-javascript/discussions/5878
 - Isolated exceptions/transactions (micro-frontends/browser extensions/3rd party scripts isolation) [request feedback] Micro Frontend support: https://github.com/getsentry/sentry-javascript/discussions/5217

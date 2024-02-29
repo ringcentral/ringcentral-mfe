@@ -1,7 +1,7 @@
 {
   "name": "@ringcentral/mfe-react",
   "version": "0.1.0",
-  "description": "",
+  "description": "A micro frontends framework for building Web applications",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "typings": "dist/index.d.ts",
@@ -13,10 +13,11 @@
     "watch": "",
     "clean": "rimraf dist",
     "prebuild": "yarn clean",
-    "test": "jest --watch",
-    "release": "yarn build && node ../../scripts/build/build-npm-package.js ./npm-package-options.js"
+    "test": "jest --watch"
   },
-  "keywords": [],
+  "keywords": [
+    "Micro Frontends"
+  ],
   "author": "RingCentral",
   "license": "MIT",
   "peerDependencies": {

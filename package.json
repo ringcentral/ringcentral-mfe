@@ -2,8 +2,6 @@
   "name": "ringcentral-mfe",
   "version": "0.0.1",
   "private": true,
-  "description": "",
-  "keywords": [],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ringcentral/ringcentral-mfe.git"
@@ -28,10 +26,11 @@
     "e2e:test:run": "jest --config ./test/jest-e2e.config.js --forceExit",
     "it:test": "jest --config ./test/jest-it.config.js",
     "lint": "yarn prettier -c packages/*/src/**/*",
-    "release": "lerna run release",
     "start": "cd examples/basic && yarn start",
     "test": "lerna run test",
-    "watch": "lerna run watch"
+    "watch": "lerna run watch",
+    "update:version": "lerna version --amend --no-git-tag-version",
+    "publish": "lerna exec --no-private --no-bail -- npm publish"
   },
   "config": {
     "commitizen": {

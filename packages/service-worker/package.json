@@ -1,7 +1,7 @@
 {
   "name": "@ringcentral/mfe-service-worker",
   "version": "0.1.0",
-  "description": "",
+  "description": "A micro frontends framework for building Web applications",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "typings": "dist/index.d.ts",
@@ -15,7 +15,9 @@
     "test": "jest --watch",
     "release": "yarn build && node ../../scripts/build/build-npm-package.js ./npm-package-options.js"
   },
-  "keywords": [],
+  "keywords": [
+    "Micro Frontends"
+  ],
   "author": "RingCentral",
   "license": "MIT",
   "devDependencies": {

@@ -1,5 +1,9 @@
 # RingCentral Micro Frontends
 
+![Node CI](https://github.com/ringcentral/ringcentral-mfe/workflows/Node%20CI/badge.svg)
+[![npm version](https://badge.fury.io/js/@ringcentral%2Fmfe-core.svg)](https://badge.fury.io/js/@ringcentral%2Fmfe-core)
+![license](https://img.shields.io/npm/l/@ringcentral/mfe-core)
+
 `RingCentral Micro Frontends` is a micro frontends framework for building Web applications, and it's based on [Module Federation](https://webpack.js.org/concepts/module-federation/) of Webpack.
 
 - **@ringcentral/mfe-builder**: Provides Webpack plugin for RC MFE builds
