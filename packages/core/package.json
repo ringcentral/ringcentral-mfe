@@ -1,6 +1,6 @@
 {
   "name": "@ringcentral/mfe-core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A micro frontends framework for building Web applications",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -9,6 +9,9 @@
     "dist",
     "src"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "rollup -c ../../rollup.config.ts --configPlugin typescript",
     "tsc": "tsc --noEmit",
@@ -22,8 +25,8 @@
     "@ringcentral/mfe-shared": "^0.1.0"
   },
   "dependencies": {
-    "@ringcentral/mfe-shared": "^0.1.0",
-    "@ringcentral/mfe-transport": "^0.1.0"
+    "@ringcentral/mfe-shared": "^0.1.1",
+    "@ringcentral/mfe-transport": "^0.1.1"
   },
   "keywords": [
     "Micro Frontends"

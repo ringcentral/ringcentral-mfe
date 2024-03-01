@@ -1,6 +1,6 @@
 {
   "name": "@ringcentral/mfe-sentry",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A micro frontends framework for building Web applications",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -9,6 +9,9 @@
     "dist",
     "src"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "yarn build:code",
     "build:code": "rollup -c ../../rollup.config.ts --configPlugin typescript",
@@ -28,7 +31,7 @@
     "@ringcentral/mfe-shared": "^0.1.0"
   },
   "dependencies": {
-    "@ringcentral/mfe-shared": "^0.1.0",
+    "@ringcentral/mfe-shared": "^0.1.1",
     "@sentry/browser": "^7.99.0",
     "@sentry/tracing": "^7.99.0"
   }

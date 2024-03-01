@@ -1,6 +1,6 @@
 {
   "name": "@ringcentral/mfe-react",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A micro frontends framework for building Web applications",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -9,6 +9,9 @@
     "dist",
     "src"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "rollup -c ../../rollup.config.ts --configPlugin typescript",
     "build:doc": "rimraf docs && typedoc --out docs src/index.ts --plugin typedoc-plugin-markdown --readme none --skipErrorChecking",
@@ -28,7 +31,7 @@
     "react": "^17.0.2"
   },
   "dependencies": {
-    "@ringcentral/mfe-core": "^0.1.0"
+    "@ringcentral/mfe-core": "^0.1.1"
   },
   "devDependencies": {
     "@testing-library/react": "^12.1.5",
