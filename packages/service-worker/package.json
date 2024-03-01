@@ -5,6 +5,10 @@
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "typings": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
   "scripts": {
     "build": "rollup -c ./rollup.config.ts --configPlugin typescript",
     "tsc": "tsc --noEmit",
