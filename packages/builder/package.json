@@ -22,6 +22,14 @@
     "prebuild": "yarn clean",
     "test": "jest --watch"
   },
+  "bugs": {
+    "url": "https://github.com/ringcentral/ringcentral-mfe/issues"
+  },
+  "homepage": "https://github.com/ringcentral/ringcentral-mfe#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ringcentral/ringcentral-mfe.git"
+  },
   "keywords": [
     "Module Federation",
     "Micro Frontends"

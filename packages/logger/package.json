@@ -34,6 +34,14 @@
     "safe-stable-stringify": "^2.4.3",
     "serialize-error": "11.0.0"
   },
+  "bugs": {
+    "url": "https://github.com/ringcentral/ringcentral-mfe/issues"
+  },
+  "homepage": "https://github.com/ringcentral/ringcentral-mfe#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ringcentral/ringcentral-mfe.git"
+  },
   "keywords": [
     "Micro Frontends"
   ],

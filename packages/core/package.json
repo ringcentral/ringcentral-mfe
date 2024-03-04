@@ -28,6 +28,14 @@
     "@ringcentral/mfe-shared": "^0.1.2",
     "@ringcentral/mfe-transport": "^0.1.2"
   },
+  "bugs": {
+    "url": "https://github.com/ringcentral/ringcentral-mfe/issues"
+  },
+  "homepage": "https://github.com/ringcentral/ringcentral-mfe#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ringcentral/ringcentral-mfe.git"
+  },
   "keywords": [
     "Micro Frontends"
   ],
