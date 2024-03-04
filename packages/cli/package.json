@@ -1,12 +1,19 @@
 {
   "name": "@ringcentral/mfe-cli",
-  "version": "0.1.0",
-  "description": "",
+  "version": "0.3.0",
+  "description": "A micro frontends framework for building Web applications",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "typings": "dist/index.d.ts",
   "bin": {
     "rc-mfe": "bin/index.js"
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "rollup -c ../../rollup.config.ts --configPlugin typescript",
@@ -15,8 +22,7 @@
     "watch": "",
     "clean": "rimraf dist",
     "prebuild": "yarn clean",
-    "test": "jest --watch",
-    "release": "yarn build && node ../../scripts/build/build-npm-package.js ./npm-package-options.js"
+    "test": "jest --watch"
   },
   "peerDependencies": {
     "@ringcentral/mfe-shared": "^0.1.0"
@@ -31,7 +37,17 @@
     "node-fetch": "^2.6.9",
     "yargs": "17.6.2"
   },
-  "keywords": [],
+  "bugs": {
+    "url": "https://github.com/ringcentral/ringcentral-mfe/issues"
+  },
+  "homepage": "https://github.com/ringcentral/ringcentral-mfe#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ringcentral/ringcentral-mfe.git"
+  },
+  "keywords": [
+    "Micro Frontends"
+  ],
   "author": "RingCentral",
   "license": "MIT"
 }
