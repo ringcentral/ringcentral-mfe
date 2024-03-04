@@ -1,6 +1,6 @@
 {
   "name": "@ringcentral/mfe-builder",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "A micro frontends framework for building Web applications",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -44,7 +44,7 @@
     "webpack": "^5.75.0"
   },
   "dependencies": {
-    "@ringcentral/mfe-shared": "^0.2.1",
+    "@ringcentral/mfe-shared": "^0.3.0",
     "yargs": "17.6.2"
   }
 }

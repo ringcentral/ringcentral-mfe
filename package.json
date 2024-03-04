@@ -29,6 +29,7 @@
     "start": "cd examples/basic && yarn start",
     "test": "lerna run test",
     "watch": "lerna run watch",
+    "pre:publish": "lerna run pre:publish",
     "update:version": "lerna version --amend --no-git-tag-version",
     "publish": "lerna exec --no-private --no-bail -- npm publish"
   },

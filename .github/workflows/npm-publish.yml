@@ -16,6 +16,7 @@ jobs:
       - run: yarn
       - run: yarn build
       - run: yarn ci:test
+      - run: yarn pre:publish
       - run: npm run publish
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_AUTH_TOKEN}}
