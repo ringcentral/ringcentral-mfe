@@ -1,27 +1,22 @@
 {
   "name": "@ringcentral/mfe-service-worker",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "A micro frontends framework for building Web applications",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "typings": "dist/index.d.ts",
-  "files": [
-    "dist",
-    "sw",
-    "src"
-  ],
+  "main": "index.js",
+  "module": "index.mjs",
+  "typings": "index.d.ts",
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "rollup -c ./rollup.config.ts --configPlugin typescript",
+    "build": "rollup -c ./rollup.config.ts --configPlugin typescript && yarn build:copy",
+    "build:copy": "rimraf shared src sw webpack-plugin && cp -r dist/* ./",
     "tsc": "tsc --noEmit",
     "ci:test": "echo skip",
     "watch": "",
     "clean": "rimraf dist",
     "prebuild": "yarn clean",
-    "test": "jest --watch",
-    "release": "yarn build && node ../../scripts/build/build-npm-package.js ./npm-package-options.js"
+    "test": "jest --watch"
   },
   "bugs": {
     "url": "https://github.com/ringcentral/ringcentral-mfe/issues"
@@ -51,7 +46,7 @@
     "webpack": "^5.75.0"
   },
   "dependencies": {
-    "@ringcentral/mfe-shared": "^0.1.2",
+    "@ringcentral/mfe-shared": "^0.2.0",
     "crypto": "^1.0.1",
     "ts-md5": "1.3.1",
     "workbox-window": "6.5.4"
