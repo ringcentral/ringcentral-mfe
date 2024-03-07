@@ -25,13 +25,13 @@
     "test": "jest --watch"
   },
   "peerDependencies": {
-    "@ringcentral/mfe-shared": "^0.1.0"
+    "@ringcentral/mfe-shared": "^0.3.0"
   },
   "devDependencies": {
     "@types/node-fetch": "2.6.3"
   },
   "dependencies": {
-    "@ringcentral/mfe-shared": "^0.1.0",
+    "@ringcentral/mfe-shared": "^0.3.0",
     "commander": "10.0.1",
     "fs-extra": "11.1.1",
     "node-fetch": "^2.6.9",

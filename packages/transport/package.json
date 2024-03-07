@@ -35,7 +35,7 @@
   "author": "RingCentral",
   "license": "MIT",
   "peerDependencies": {
-    "@ringcentral/mfe-shared": "^0.1.0",
+    "@ringcentral/mfe-shared": "^0.3.0",
     "data-transport": "^4.3.5"
   },
   "dependencies": {
