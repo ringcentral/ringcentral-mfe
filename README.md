@@ -166,18 +166,28 @@ yarn e2e:test
 yarn it:test
 ```
 
-7. Submit MR with `commitizen`
+7. Submit commit with `commitizen`
 
 ```sh
 yarn commit
 ```
 
-8. Finally, run all tests in CI.
+8. Run all tests in CI.
 
 ```sh
 yarn ci:test
 ```
 
+9. Submit PR and wait for the CI to pass.
+
+10. Merge PR after the review.
+
+### Publish a new version
+
+1. Run `yarn update:version` to update the version of the package.
+2. Submit PR and wait for the CI to pass.
+3. Merge PR after the review.
+4. Draft a new release in the GitHub release page [https://github.com/ringcentral/ringcentral-mfe/releases](https://github.com/ringcentral/ringcentral-mfe/releases).
 
 ## License
 
