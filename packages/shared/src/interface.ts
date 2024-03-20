@@ -88,6 +88,11 @@ export interface SiteOverridableConfig {
    * The default value is 1000.
    */
   retryDelay?: number;
+  /**
+   * Customize the projectRoot, which is used to resolve the absolute path of the site.config.
+   * The default value is the current working directory (process.cwd())
+   */
+  projectRoot?: string;
 }
 
 export interface SiteConfig

@@ -18,7 +18,7 @@ const DEFAULT_REMOTE_ENTRY = 'remoteEntry.js';
 
 export const getSiteConfig = ({ overrides = {} }: Options = {}): SiteConfig => {
   // TODO: implement more config options
-  const rootPath = process.cwd();
+  const rootPath = overrides.projectRoot || process.cwd();
   try {
     const configFile = path.join(rootPath, 'site.config');
     const rawConfig: SiteConfigFile = require(configFile);
