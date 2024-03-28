@@ -395,6 +395,10 @@
             ],
             "description": "The site prefix, support dynamic mode"
         },
+        "projectRoot": {
+            "description": "Customize the projectRoot, which is used to resolve the absolute path of the site.config.\nThe default value is the current working directory (process.cwd())",
+            "type": "string"
+        },
         "registry": {
             "anyOf": [
                 {
