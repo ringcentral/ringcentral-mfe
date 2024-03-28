@@ -15,6 +15,7 @@ interface DepData {
   meta: Record<string, unknown>;
   variants: {
     remoteEntry: string;
+    brandCode: string;
     metadata: Record<string, unknown>;
   }[];
 }
@@ -22,6 +23,7 @@ interface DepData {
 export interface ModuleInfo {
   entry: string;
   version: string;
+  brandCode: string;
   meta: Record<string, unknown>;
 }
 
@@ -43,6 +45,7 @@ const fetchWithModule = async ({
   deps[name] = moduleData.variants.map((item) => ({
     entry: item.remoteEntry,
     version: moduleData.version,
+    brandCode: item.brandCode,
     meta: {
       ...moduleData.meta,
       ...item.metadata,
@@ -100,6 +103,7 @@ export const fetchInfo = async ({
       data.dependencyLocks[moduleName] = moduleInfo.variants.map((item) => ({
         entry: item.remoteEntry,
         version: moduleInfo.version,
+        brandCode: item.brandCode,
         meta: {
           ...moduleInfo.meta,
           ...item.metadata,
