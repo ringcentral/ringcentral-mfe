@@ -50,16 +50,16 @@ export const useSentry = ({ urls, ...options }: BrowserClientOptions) => {
     sentryInstances: SentryInstance[];
   };
   const beforeSend: BrowserClientOptions['beforeSend'] = (event, hint) => {
-    // When the event is intercepted, we should not send it to the server
-    // you can use `mfeSentry.setTags({ intercepted })`
-    if (event.tags?.intercepted) {
-      return null;
-    }
     const frames = event?.exception?.values?.[0].stacktrace?.frames || [];
     const filename = frames.slice(-1)[0]?.filename;
     if (!filename) return event;
     for (const instance of sentryInstances) {
       if (instance.urls.find((url) => new RegExp(url).test(filename))) {
+        // When the event is intercepted, we should not send it to the server
+        // you can use `mfeSentry.setTags({ intercepted })`
+        if (instance.tags.intercepted) {
+          return null;
+        }
         event.tags = {
           ...event.tags,
           ...instance.tags,
