@@ -1,6 +1,6 @@
 {
   "name": "@ringcentral/mfe-react",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "A micro frontends framework for building Web applications",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -39,7 +39,7 @@
     "react": "^17.0.2"
   },
   "dependencies": {
-    "@ringcentral/mfe-core": "^0.3.4"
+    "@ringcentral/mfe-core": "^0.3.5"
   },
   "devDependencies": {
     "@testing-library/react": "^12.1.5",
