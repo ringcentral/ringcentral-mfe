@@ -75,6 +75,7 @@ export const getModuleFederationConfig = (
     exposes,
     optimization,
     prefix,
+    projectRoot,
     ...restConfig
   } = siteConfig;
   const remotes: ModuleFederationPluginOptions['remotes'] = {};
