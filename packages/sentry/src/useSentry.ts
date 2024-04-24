@@ -52,7 +52,17 @@ export const useSentry = ({ urls, ...options }: BrowserClientOptions) => {
   const beforeSend: BrowserClientOptions['beforeSend'] = (event, hint) => {
     const frames = event?.exception?.values?.[0].stacktrace?.frames || [];
     const filename = frames.slice(-1)[0]?.filename;
-    if (!filename) return event;
+    if (!filename) {
+      for (const instance of sentryInstances) {
+        // For using `Sentry.captureMessage` and `Sentry.captureException`,
+        // When the event is intercepted, we should not send it to the server
+        // you can use `mfeSentry.setTags({ intercepted })`
+        if (instance.tags.intercepted) {
+          return null;
+        }
+      }
+      return event;
+    }
     for (const instance of sentryInstances) {
       if (instance.urls.find((url) => new RegExp(url).test(filename))) {
         // When the event is intercepted, we should not send it to the server
