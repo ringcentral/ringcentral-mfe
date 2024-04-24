@@ -1,6 +1,6 @@
 {
   "name": "@ringcentral/mfe-shared",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "A micro frontends framework for building Web applications",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
