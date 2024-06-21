@@ -12,9 +12,9 @@
 - **@ringcentral/mfe-react**: Provide React-based MFE runtime
 - **@ringcentral/mfe-shared**: Shared collection at runtime and build-time
 - **@ringcentral/mfe-transport**: Provide a global communication transport for MFE
+- **@ringcentral/mfe-service-worker**: Provide a service-worker for MFE
 - **@ringcentral/mfe-sentry**: Provide a global sentry for MFE
 - **@ringcentral/mfe-logger**: Provide a global logger for MFE
-- **@ringcentral/mfe-service-worker**: Provide a service-worker for MFE
 
 ## Features
 
