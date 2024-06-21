@@ -7,23 +7,25 @@
 `RingCentral Micro Frontends` is a micro frontends framework for building Web applications, and it's based on [Module Federation](https://webpack.js.org/concepts/module-federation/) of Webpack.
 
 - **@ringcentral/mfe-builder**: Provides Webpack plugin for RC MFE builds
+- **@ringcentral/mfe-cli**: A core MFE CLI for registry
 - **@ringcentral/mfe-core**: A core MFE runtime
 - **@ringcentral/mfe-react**: Provide React-based MFE runtime
 - **@ringcentral/mfe-shared**: Shared collection at runtime and build-time
 - **@ringcentral/mfe-transport**: Provide a global communication transport for MFE
 - **@ringcentral/mfe-sentry**: Provide a global sentry for MFE
 - **@ringcentral/mfe-logger**: Provide a global logger for MFE
+- **@ringcentral/mfe-service-worker**: Provide a service-worker for MFE
 
 ## Features
 
-- Dependencies management - Set `site.config.json` or `site.config.js`
-- Compatible with building local-only SPA - Use `yarn build --env spa`
-- Multiple types of rendering containers - Support Micro-App/iframe/WebComponent
-- MFE Lifecycle - Provide `init`, `mount` and `unmount` APIs as lifecycles
-- Generic Communication - Use `@ringcentral/mfe-transport` as a global communication transport for MFE
-- CSS isolation - Support CSS modules CSS isolation injection for Webpack `style-loader` and so on.
-- Debugger/Logger - Provide meta info for Debugging/Logging.
-- Version control - Support custom registry for MFE remote entry version control
+- **Dependencies management** - Set `site.config.json` or `site.config.js`
+- **Compatible with building local-only SPA** - Use `yarn build --env spa`
+- **Multiple types of rendering containers** - Support Micro-App/iframe/WebComponent
+- **MFE Lifecycle** - Provide `init`, `mount` and `unmount` APIs as lifecycles
+- **Generic Communication** - Use `@ringcentral/mfe-transport` as a global communication transport for MFE
+- **CSS isolation** - Support CSS modules CSS isolation injection for Webpack `style-loader` and so on.
+- **Debugger/Logger** - Provide meta info for Debugging/Logging.
+- **Version control** - Support custom registry for MFE remote entry version control
 
 ## Installation
 
@@ -188,6 +190,8 @@ yarn ci:test
 2. Submit PR and wait for the CI to pass.
 3. Merge PR after the review.
 4. Draft a new release in the GitHub release page [https://github.com/ringcentral/ringcentral-mfe/releases](https://github.com/ringcentral/ringcentral-mfe/releases).
+
+> Release title should be like `x.x.x`
 
 ## License
 
