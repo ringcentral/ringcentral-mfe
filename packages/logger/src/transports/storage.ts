@@ -1,3 +1,4 @@
+/* eslint-disable no-param-reassign */
 /* eslint-disable consistent-return */
 import { getLogLevelName, Message } from 'roarr';
 import { global } from '@ringcentral/mfe-shared';
@@ -219,8 +220,17 @@ export class StorageTransport implements ITransport {
 
   protected _savingLogs = new Set<Logs>();
 
-  protected _saveLogs(data: Logs) {
+  protected async _checkTimeKey(time: number): Promise<number> {
+    const count = await this._table?.where('time').equals(time).count();
+    if (count) {
+      return this._checkTimeKey(time + 1);
+    }
+    return time;
+  }
+
+  protected async _saveLogs(data: Logs) {
     this._savingLogs.add(data);
+    data.time = await this._checkTimeKey(data.time);
     const savingLogsPromise = this._table?.add(data).then(() => {
       this._savingLogs.delete(data);
       if (this.savingLogsPromise === savingLogsPromise) {
