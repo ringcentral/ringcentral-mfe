@@ -36,10 +36,10 @@
   "license": "MIT",
   "peerDependencies": {
     "@ringcentral/mfe-shared": "^0.1.0",
-    "data-transport": "^4.3.5"
+    "data-transport": "^4.3.6"
   },
   "dependencies": {
     "@ringcentral/mfe-shared": "^0.3.8",
-    "data-transport": "^4.3.5"
+    "data-transport": "^4.3.6"
   }
 }
