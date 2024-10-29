@@ -2,7 +2,8 @@
   "$schema": "../../../node_modules/@ringcentral/mfe-shared/site-schema.json",
   "name": "@example/app3",
   "exposes": {
-    "./src/bootstrap": "./src/bootstrap"
+    "./src/bootstrap": "./src/bootstrap",
+    "./src/testValue": "./src/testValue"
   },
   "shared": {
     "react": {

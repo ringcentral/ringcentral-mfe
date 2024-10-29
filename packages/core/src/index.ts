@@ -8,7 +8,7 @@ export {
 export { satisfiesVersion } from '@ringcentral/mfe-shared';
 
 export { identifierAttribute, customElementName } from './constants';
-export { getMeta } from './meta';
+export { getMeta, getWorkerName } from './meta';
 export { loadApp } from './loadApp';
 export {
   uuid,

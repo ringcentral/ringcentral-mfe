@@ -10,7 +10,7 @@ const {
   GenerateManifestWebpackPlugin,
 } = require('@ringcentral/mfe-service-worker/dist/webpack-plugin/generate-manifest-webpack-plugin');
 
-module.exports = {
+const config = {
   entry: './src/index',
   mode: 'development',
   devServer: {
@@ -26,7 +26,7 @@ module.exports = {
     },
   },
   output: {
-    publicPath: 'auto',
+    publicPath: 'http://localhost:3003/',
   },
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx'],
@@ -64,3 +64,15 @@ module.exports = {
     }),
   ],
 };
+
+module.exports = [
+  config,
+  {
+    ...config,
+    target: 'webworker',
+    output: {
+      path: path.resolve(__dirname, 'dist/worker'),
+      publicPath: 'http://localhost:3003/',
+    },
+  },
+];

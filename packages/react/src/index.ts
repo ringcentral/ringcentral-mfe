@@ -2,6 +2,7 @@ export {
   expose,
   dynamicLoad,
   getMeta,
+  getWorkerName,
   GlobalTransport,
   globalTransport,
   getGlobalTransport,
