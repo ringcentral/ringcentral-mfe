@@ -109,6 +109,14 @@ const App2 = useApp({
 
 4. You can bootstrap `app1` and `app2` projects with RC MFE.
 
+## Usage in SharedWorker
+
+1. Use SharedWorker in host application with `getWorkerName`
+2. Dynamically import bootstrap file in worker thread
+3. Add another entry points with `target: 'webworker'` and set `output.publicPath` and `output.path` in MFE webpack config(e.g. `examples/basic/app3/webpack.config.js`).
+
+> `webpack dev server` is not supported in multiple entry points, so you need to build and serve the worker file manually(e.g. `examples/basic/app3/dev.js`).
+
 ## Contribution
 
 > Note: `packages/builder/src/make.ts` and `packages/shared/src/*`

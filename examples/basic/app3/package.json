@@ -9,14 +9,16 @@
     "@types/react-dom": "^17.0.18",
     "@types/react-router-dom": "^5.3.3",
     "babel-loader": "^9.1.0",
+    "express": "^4.21.1",
     "html-webpack-plugin": "^5.5.0",
     "serve": "^14.1.1",
     "webpack": "^5.90.1",
     "webpack-cli": "^4.10.0",
+    "webpack-dev-middleware": "^7.4.2",
     "webpack-dev-server": "^4.11.1"
   },
   "scripts": {
-    "start": "webpack-cli serve",
+    "start": "node ./dev.js",
     "build": "webpack --mode production",
     "serve": "serve dist -p 3003 --cors",
     "clean": "rm -rf dist"

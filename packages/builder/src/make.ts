@@ -38,6 +38,7 @@ export const makeRemoteScript = (
         );
         throw e;
       }
+      // TODO: support custom worker remote
       const url = new URL(remoteEntry);
       const pathname = url.pathname.split('/');
       pathname.splice(-1, 0, 'worker');
