@@ -16,6 +16,16 @@ export const injectScript = ({
   }) => Promise<void>;
 }): Promise<void> => {
   return new Promise((resolve, reject) => {
+    if (globalThis.SharedWorkerGlobalScope) {
+      try {
+        importScripts(url);
+        resolve();
+      } catch (e) {
+        reject(e);
+        console.error(`[MFE] Script Error: ${url}`);
+      }
+      return;
+    }
     const element = document.createElement('script');
     element.src = url;
     element.async = true;

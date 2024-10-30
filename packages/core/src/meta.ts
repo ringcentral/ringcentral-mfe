@@ -34,3 +34,11 @@ export const getMeta = (name?: string) => {
     rendered: Object.keys(renderContainers),
   };
 };
+
+export const getWorkerName = (name: string) => {
+  const metaData = getMeta();
+  const dependencies = metaData
+    ? metaData.data.modules[metaData.data.main]?.dependencies ?? {}
+    : {};
+  return `${name}#${btoa(JSON.stringify(dependencies))}`;
+};

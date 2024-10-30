@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { expose, getMeta } from '@ringcentral/mfe-react';
+import { expose, getMeta, getWorkerName } from '@ringcentral/mfe-react';
 import { getGlobalTransport, PickListeners } from '@ringcentral/mfe-transport';
 import { useSentry } from '@ringcentral/mfe-sentry';
 import {
@@ -8,9 +8,15 @@ import {
   ConsoleTransport,
   StorageTransport,
 } from '@ringcentral/mfe-logger';
+import { testValue } from '@example/app3/src/testValue';
 
 import type App3 from '@example/app3/src/bootstrap';
 import App from './App';
+
+console.log('testValue in main thread', testValue);
+const worker = new SharedWorker(new URL('./worker', import.meta.url), {
+  name: getWorkerName('app2'),
+});
 
 (window as any)._log2 = useLogger({
   name: 'app2',

@@ -8,7 +8,8 @@ import { getEntry } from './getEntry';
 import { ExposeOptions } from './interface';
 
 // container for module federation dynamic import
-const getContainer = (name: string) => (window as Record<string, any>)[name];
+const getContainer = (name: string) =>
+  (globalThis as Record<string, any>)[name];
 
 export const getModule = async ({
   name,

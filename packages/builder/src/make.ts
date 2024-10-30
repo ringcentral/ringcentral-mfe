@@ -27,16 +27,36 @@ export const makeRemoteScript = (
   new Promise((resolve) => {
     const _global = getGlobal();
     if ((_global as any)[name]) return resolve((_global as any)[name]);
+    if (_global.SharedWorkerGlobalScope) {
+      // decode rule mapping with `core/src/meta.ts` getWorkerName function
+      let remoteEntry = '';
+      try {
+        remoteEntry = JSON.parse(atob(_global.name.split('#')[1]))[name].entry;
+      } catch (e) {
+        console.error(
+          `[MFE] Failed to parse remote entry for ${name}, please check that the worker name must be wrapped using 'getWorkerName'.`
+        );
+        throw e;
+      }
+      const url = new URL(remoteEntry);
+      const pathname = url.pathname.split('/');
+      pathname.splice(-1, 0, 'worker');
+      // replace the default remote with the worker remote
+      // e.g. http://localhost:3000/remoteEntry.js -> http://localhost:3000/worker/remoteEntry.js
+      const workerRemote = `${url.origin}${pathname.join('/')}`;
+      importScripts(workerRemote);
+    }
     const toBeResolved = () => {
-      resolve(
+      const container =
+        (_global as any)[name] ??
         _global[identifierContainer].dynamicImport({
           dependency: name,
           defaultRemote,
           name: packageName,
           version: version || '',
           dependencyVersion,
-        })
-      );
+        });
+      resolve(container);
     };
     if (
       !_global[identifierContainer] ||
@@ -75,7 +95,48 @@ export const makeBannerScript = (
     retryDelay: number;
   }
 ) => {
+  class MemoryStorage implements Storage {
+    private _data: Map<string, any> = new Map();
+
+    getItem(key: string) {
+      return this._data.get(key);
+    }
+
+    setItem(key: string, value: any) {
+      this._data.set(key, value);
+    }
+
+    removeItem(key: string) {
+      this._data.delete(key);
+    }
+
+    get length() {
+      return this._data.size;
+    }
+
+    key(idx: number) {
+      return [...this._data.keys()][idx];
+    }
+
+    keys() {
+      return [...this._data.keys()];
+    }
+
+    ready() {
+      return true;
+    }
+
+    clear() {
+      this._data.clear();
+    }
+  }
+
   const _global = getGlobal();
+  if (_global.WorkerGlobalScope) {
+    // use window instead of self in worker
+    (_global as any).window = _global;
+  }
+  _global.localStorage = _global.localStorage || new MemoryStorage();
   _global[identifierContainer] = _global[identifierContainer] ?? {};
   _global[identifierContainer].main =
     _global[identifierContainer].main ?? mfeConfig.name;
@@ -85,7 +146,7 @@ export const makeBannerScript = (
     _global[identifierContainer].defaultMode ?? mfeConfig.defaultMode ?? '*';
   const { main, defaultMode } = _global[identifierContainer];
   const storageKey = [identifier, main].join(':');
-  const mode = localStorage.getItem(storageKey) ?? defaultMode;
+  const mode = _global.localStorage.getItem(storageKey) ?? defaultMode;
   const _prefix =
     typeof mfeConfig.prefix === 'object'
       ? mfeConfig.prefix[mode]
@@ -104,7 +165,7 @@ export const makeBannerScript = (
   if (_registry) Object.assign(mfeConfig, { registry: _registry });
   _global[identifierContainer].registry =
     _global[identifierContainer].registry ??
-    localStorage.getItem(`${storageKey}:registry`) ??
+    _global.localStorage.getItem(`${storageKey}:registry`) ??
     mfeConfig.registry ??
     '*';
   _global[identifierContainer].registryType =
@@ -133,7 +194,7 @@ export const makeBannerScript = (
     _global[identifierContainer].styles || {};
   _global[identifierContainer].loads = _global[identifierContainer].loads || {};
   _global[identifierContainer].storage =
-    _global[identifierContainer].storage ?? localStorage;
+    _global[identifierContainer].storage ?? _global.localStorage;
   _global[identifierContainer]._toBeResolvedUpdateStorage =
     _global[identifierContainer]._toBeResolvedUpdateStorage === undefined
       ? new Set()
