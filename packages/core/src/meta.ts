@@ -30,15 +30,15 @@ export const getMeta = (name?: string) => {
       modules,
       renderContainers,
     },
-    loaded: Object.keys(modules),
-    rendered: Object.keys(renderContainers),
+    loaded: Object.keys(modules ?? {}),
+    rendered: Object.keys(renderContainers ?? {}),
   };
 };
 
 export const getWorkerName = (name: string) => {
   const metaData = getMeta();
   const dependencies = metaData
-    ? metaData.data.modules[metaData.data.main]?.dependencies ?? {}
+    ? metaData.data.modules?.[metaData.data.main]?.dependencies ?? {}
     : {};
   return `${name}#${btoa(JSON.stringify(dependencies))}`;
 };
