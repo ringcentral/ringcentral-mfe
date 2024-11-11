@@ -40,11 +40,12 @@ export const makeRemoteScript = (
       }
       // TODO: support custom worker remote
       const url = new URL(remoteEntry);
-      const pathname = url.pathname.split('/');
-      pathname.splice(-1, 0, 'worker');
       // replace the default remote with the worker remote
       // e.g. http://localhost:3000/remoteEntry.js -> http://localhost:3000/worker/remoteEntry.js
-      const workerRemote = `${url.origin}${pathname.join('/')}`;
+      const workerRemote = remoteEntry.replace(
+        url.pathname,
+        `/worker${url.pathname}`
+      );
       importScripts(workerRemote);
     }
     const toBeResolved = () => {
