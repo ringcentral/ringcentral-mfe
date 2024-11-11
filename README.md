@@ -116,7 +116,7 @@ const App2 = useApp({
 3. Add another entry points with `target: 'webworker'` and set `output.publicPath` and `output.path` in MFE webpack config(e.g. `examples/basic/app3/webpack.config.js`).
 
 > `webpack dev server` is not supported in multiple entry points, so you need to build and serve the worker file manually(e.g. `examples/basic/app3/dev.js`).
-> After building, all files in the `worker` directory except for `remoteEntry.js` do not need to be deployed.
+> After building, all files in the `worker` directory except for `remoteEntry.js` do not need to be deployed.This means that you will have two MFE bundled files in different directories, e.g. `http://localhost:3000/remoteEntry.js` and `http://localhost:3000/worker/remoteEntry.js`. The name of the `worker` directory config is hardcode here.
 
 ## Contribution
 
