@@ -14,9 +14,9 @@ import type App3 from '@example/app3/src/bootstrap';
 import App from './App';
 
 console.log('testValue in main thread', testValue);
-const worker = new SharedWorker(new URL('./worker', import.meta.url), {
-  name: getWorkerName('app2'),
-});
+// const worker = new SharedWorker(new URL('./worker', import.meta.url), {
+//   name: getWorkerName('app2'),
+// });
 
 (window as any)._log2 = useLogger({
   name: 'app2',
