@@ -1,6 +1,6 @@
 {
   "name": "@ringcentral/mfe-transport",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "A micro frontends framework for building Web applications",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -39,7 +39,7 @@
     "data-transport": "^4.3.6"
   },
   "dependencies": {
-    "@ringcentral/mfe-shared": "^0.4.2",
+    "@ringcentral/mfe-shared": "^0.4.3",
     "data-transport": "^4.3.6"
   }
 }

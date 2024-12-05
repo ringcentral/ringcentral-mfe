@@ -1,6 +1,6 @@
 {
   "name": "@ringcentral/mfe-sentry",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "A micro frontends framework for building Web applications",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -39,7 +39,7 @@
     "@ringcentral/mfe-shared": "^0.1.0"
   },
   "dependencies": {
-    "@ringcentral/mfe-shared": "^0.4.2",
+    "@ringcentral/mfe-shared": "^0.4.3",
     "@sentry/browser": "^7.99.0",
     "@sentry/tracing": "^7.99.0"
   }
