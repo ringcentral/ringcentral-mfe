@@ -86,7 +86,7 @@ export const getModuleFederationConfig = (
     __DEV__ &&
     (typeof exposes !== 'object' || !Object.keys(exposes).length)
   ) {
-    throw new Error(`'exposes' should set at least one of the exposed module.`);
+    console.warn(`'exposes' should set at least one of the exposed module.`);
   }
   if (__DEV__ && restConfig.remoteType) {
     console.warn(
