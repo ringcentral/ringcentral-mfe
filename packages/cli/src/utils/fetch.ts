@@ -40,8 +40,10 @@ const fetchWithModule = async ({
 }) => {
   if (deps[name]) return;
   const url = `${registry}/api/modules/${name}/releases/${version}`;
+  console.log('module registry fetch:', url);
   const response = await fetch(url);
   const moduleData: DepData = await response.json();
+  console.log('module registry response:', moduleData);
   deps[name] = moduleData.variants.map((item) => ({
     entry: item.remoteEntry,
     version: moduleData.version,
@@ -95,8 +97,10 @@ export const fetchInfo = async ({
   };
   if (isApp) {
     const url = `${registry}/api/apps/${name}/releases/${version}`;
+    console.log('app registry fetch:', url);
     const response = await fetch(url);
     const result = await response.json();
+    console.log('app registry response:', result);
     for (const [moduleName, moduleInfo] of Object.entries(
       result.dependencyLocks
     ) as [string, DepData][]) {
