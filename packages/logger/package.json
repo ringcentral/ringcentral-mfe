@@ -21,19 +21,6 @@
     "prebuild": "yarn clean",
     "test": "jest --watch"
   },
-  "peerDependencies": {
-    "@ringcentral/mfe-shared": "^0.1.0"
-  },
-  "dependencies": {
-    "@ringcentral/mfe-shared": "^0.4.3",
-    "@roarr/browser-log-writer": "1.3.0",
-    "dexie": "3.2.4",
-    "file-saver": "2.0.5",
-    "jszip": "3.10.1",
-    "roarr": "7.15.1",
-    "safe-stable-stringify": "^2.4.3",
-    "serialize-error": "11.0.0"
-  },
   "bugs": {
     "url": "https://github.com/ringcentral/ringcentral-mfe/issues"
   },
@@ -48,6 +35,20 @@
   "author": "RingCentral",
   "license": "MIT",
   "devDependencies": {
+    "@ringcentral/mfe-shared": "^0.1.0",
     "@types/file-saver": "2.0.5"
+  },
+  "peerDependencies": {
+    "@ringcentral/mfe-shared": "^0.1.0"
+  },
+  "dependencies": {
+    "@ringcentral/mfe-shared": "^0.4.3",
+    "@roarr/browser-log-writer": "1.3.0",
+    "dexie": "3.2.4",
+    "file-saver": "2.0.5",
+    "jszip": "3.10.1",
+    "roarr": "7.15.1",
+    "safe-stable-stringify": "^2.4.3",
+    "serialize-error": "11.0.0"
   }
 }

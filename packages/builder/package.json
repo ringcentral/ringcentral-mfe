@@ -44,7 +44,6 @@
     "webpack": "^5.75.0"
   },
   "dependencies": {
-    "@ringcentral/mfe-shared": "^0.4.3",
     "yargs": "17.6.2"
   }
 }

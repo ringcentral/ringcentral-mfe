@@ -21,9 +21,6 @@
     "prebuild": "yarn clean",
     "test": "jest --watch"
   },
-  "peerDependencies": {
-    "@ringcentral/mfe-shared": "^0.1.0"
-  },
   "dependencies": {
     "@ringcentral/mfe-shared": "^0.4.3",
     "@ringcentral/mfe-transport": "^0.4.3"

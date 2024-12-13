@@ -1222,6 +1222,11 @@
   resolved "https://registry.npmjs.org/@pkgjs/parseargs/-/parseargs-0.11.0.tgz"
   integrity sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==
 
+"@ringcentral/mfe-shared@^0.1.0":
+  version "0.1.2"
+  resolved "https://registry.yarnpkg.com/@ringcentral/mfe-shared/-/mfe-shared-0.1.2.tgz#d9b9008fffb2fe82abf4a18df95a38fc2015cce3"
+  integrity sha512-KT/rYNRZRCXjdh4J6DmbEq4JOIaCv4EakVoOaRaY/AeiR/J6511NzUvjak+kpdaThWIBbCLK9upmtl/rblGJIw==
+
 "@roarr/browser-log-writer@1.3.0":
   version "1.3.0"
   resolved "https://registry.npmjs.org/@roarr/browser-log-writer/-/browser-log-writer-1.3.0.tgz"
@@ -3409,10 +3414,10 @@ dargs@^7.0.0:
   resolved "https://registry.npmjs.org/dargs/-/dargs-7.0.0.tgz"
   integrity sha512-2iy1EkLdlBzQGvbweYRFxmFath8+K7+AKB0TlhHWkNuH+TmovaMH/Wp7V7R4u7f4SnX3OgLsU9t1NI9ioDnUpg==
 
-data-transport@^4.3.6:
-  version "4.3.6"
-  resolved "https://registry.yarnpkg.com/data-transport/-/data-transport-4.3.6.tgz#6f51f5d91a9d43e5f4ec1b491d009e80c47e243c"
-  integrity sha512-YIhrpsHU4xy4BX4RH9cPkDvpF2YmCmVnyV6yJQ79MrSg74mEdMel16tGyL/BkCSZDned0sqBye8jC5fqQxa5PQ==
+data-transport@^4.5.0:
+  version "4.5.0"
+  resolved "https://registry.yarnpkg.com/data-transport/-/data-transport-4.5.0.tgz#c8112cf01c13d65181a1b60b6529b29f46084aa5"
+  integrity sha512-FWaTFU3O6FVAjIsa3kR2AwUbTSpz7Ijh51W/pQ+RULpLf/YuANERJFGhX4TGM4by2D5hGAdux6LttxlJQ/P+5Q==
   dependencies:
     uuid "^9.0.0"
 

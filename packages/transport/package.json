@@ -34,12 +34,13 @@
   ],
   "author": "RingCentral",
   "license": "MIT",
+  "devDependencies": {
+    "@ringcentral/mfe-shared": "^0.1.0"
+  },
   "peerDependencies": {
-    "@ringcentral/mfe-shared": "^0.1.0",
-    "data-transport": "^4.3.6"
+    "@ringcentral/mfe-shared": "^0.1.0"
   },
   "dependencies": {
-    "@ringcentral/mfe-shared": "^0.4.3",
-    "data-transport": "^4.3.6"
+    "data-transport": "^4.5.0"
   }
 }
