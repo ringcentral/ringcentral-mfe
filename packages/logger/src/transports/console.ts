@@ -33,14 +33,14 @@ export class ConsoleTransport implements ITransport {
       /**
        * Ignore logs that match the rules.
        */
-      ignoreRule?: string[];
+      ignoreRule?: (string | RegExp)[];
     }
   ) {
     this._consoleWrite = createLogWriter({
       storage: this._options?.storage,
     });
-    this._ignoreRules = (this._options?.ignoreRule ?? []).map(
-      (rule) => new RegExp(rule)
+    this._ignoreRules = (this._options?.ignoreRule ?? []).map((rule) =>
+      rule instanceof RegExp ? rule : new RegExp(rule)
     );
   }
 
