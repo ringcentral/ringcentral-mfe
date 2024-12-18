@@ -14,16 +14,34 @@ export class ConsoleTransport implements ITransport {
 
   protected _consoleWrite: LogWriter;
 
+  protected _ignoreRules: RegExp[] = [];
+
   constructor(
     protected _options?: {
+      /**
+       * By default the console transport is disabled.
+       */
       enabled?: boolean;
+      /**
+       * By default all logs are displayed.
+       */
       filter?: string;
+      /**
+       * The storage to save the log.
+       */
       storage?: Storage;
+      /**
+       * Ignore logs that match the rules.
+       */
+      ignoreRule?: string[];
     }
   ) {
     this._consoleWrite = createLogWriter({
       storage: this._options?.storage,
     });
+    this._ignoreRules = (this._options?.ignoreRule ?? []).map(
+      (rule) => new RegExp(rule)
+    );
   }
 
   protected get _storage() {
@@ -48,6 +66,7 @@ export class ConsoleTransport implements ITransport {
   }
 
   write({ message }: SerializedMessage) {
+    if (this._ignoreRules.some((regex) => regex.test(message))) return;
     if (this._options?.enabled) {
       this._consoleWrite(message);
     }
