@@ -12,6 +12,7 @@ declare global {
 
   var __RC_MFE_REGISTRY_CALLBACK__: any;
 
+  var __RC_MFE_SATISFY__: any;
   var __RC_MFE_USE_LOADER__: boolean;
   var ROARR: {
     write: (message: string) => void;
