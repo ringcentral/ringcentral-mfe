@@ -6,6 +6,7 @@ export const isSatisfied = (
   options: Partial<RegistryData> | undefined,
   dependencyVersion: string
 ): options is RegistryData => {
+  // To ensure consistency, it is used for webpage or other running container  mfe info satisfies version.
   if (globalThis.__RC_MFE_SATISFY__)
     return globalThis.__RC_MFE_SATISFY__(options, dependencyVersion);
   let matchResult = false;
