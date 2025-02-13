@@ -6,6 +6,8 @@ export const isSatisfied = (
   options: Partial<RegistryData> | undefined,
   dependencyVersion: string
 ): options is RegistryData => {
+  if (globalThis.__RC_MFE_SATISFY__)
+    return globalThis.__RC_MFE_SATISFY__(options, dependencyVersion);
   let matchResult = false;
   try {
     matchResult = options
