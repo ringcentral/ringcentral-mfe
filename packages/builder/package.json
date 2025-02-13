@@ -1,6 +1,6 @@
 {
   "name": "@ringcentral/mfe-builder",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "description": "A micro frontends framework for building Web applications",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
