@@ -10,10 +10,16 @@ export class SerializeMiddlewares implements IMiddlewares {
   }
 
   handleParams(params: any[]) {
-    return stringify(
-      params.map((item) =>
-        item instanceof Error ? serializeError(item) : item
-      )
-    ).slice(1, -1);
+    const arr = params.map((item) =>
+      item instanceof Error ? serializeError(item) : item
+    );
+    try {
+      return stringify(arr).slice(1, -1);
+    } catch (e) {
+      console.error(e);
+      return Array.isArray(arr) && typeof arr[0] === 'string'
+        ? `['${arr[0]}', 'non-serializable data']`
+        : 'non-serializable data';
+    }
   }
 }
