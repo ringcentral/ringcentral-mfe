@@ -1,6 +1,6 @@
 {
   "name": "@ringcentral/mfe-cli",
-  "version": "0.4.8",
+  "version": "0.4.9",
   "description": "A micro frontends framework for building Web applications",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -31,7 +31,7 @@
     "@types/node-fetch": "2.6.3"
   },
   "dependencies": {
-    "@ringcentral/mfe-shared": "^0.4.8",
+    "@ringcentral/mfe-shared": "^0.4.9",
     "commander": "10.0.1",
     "fs-extra": "11.1.1",
     "node-fetch": "^2.6.9",
