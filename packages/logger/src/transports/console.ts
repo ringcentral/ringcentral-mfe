@@ -68,7 +68,10 @@ export class ConsoleTransport implements ITransport {
   write({ message }: SerializedMessage) {
     if (this._ignoreRules.some((regex) => regex.test(message))) return;
     if (this._options?.enabled) {
-      this._consoleWrite(message);
+      const messageObj = JSON.parse(message);
+      delete messageObj.context.application;
+      delete messageObj.context.options;
+      this._consoleWrite(JSON.stringify(messageObj));
     }
   }
 

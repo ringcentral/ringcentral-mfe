@@ -30,7 +30,10 @@ export class ConsoleIntegration implements IIntegration {
           // if the log is from the logger itself, don't log it again.
           if (args[4]?.application) return;
           // `args` may contain non-serializable objects, so only the string form of `args` is logged here.
-          this._logger?.[method]?.(args.map((arg) => arg?.toString?.()));
+          this._logger?.[method]?.apply!(
+            this._logger,
+            args.map((arg) => String(arg))
+          );
           // if the console transport is disabled, don't log it with native console logger again.
           if (this._consoleTransport) return;
           originalMethod.apply(console, args);
