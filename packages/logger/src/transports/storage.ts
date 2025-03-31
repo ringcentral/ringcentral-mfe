@@ -199,6 +199,14 @@ export class StorageTransport implements ITransport {
     ).join(':')}] MSG: ${payload.message}`;
   }
 
+  /**
+   * save memory logs to database and prune logs
+   */
+  async saveDB() {
+    await this._saveDB();
+    await this._pruneLogs();
+  }
+
   protected _saveDB() {
     clearTimeout(this._timeout!);
     this._timeout = null;
