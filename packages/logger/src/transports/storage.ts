@@ -77,6 +77,17 @@ interface StorageTransportOptions {
   recentTime?: number;
 }
 
+export type ExtraLogs = {
+  /**
+   * log content
+   */
+  log: string;
+  /**
+   * name of the log file
+   */
+  fileName: string;
+}[];
+
 export class StorageTransport implements ITransport {
   type = 'storage';
 
@@ -300,14 +311,25 @@ export class StorageTransport implements ITransport {
   }
 
   /**
-   * get logs in the recent time
+   * query logs in the recent time
    */
-  async getLogs({
+  async queryLogs({
     name: _name = this.name,
     recentTime = this.recentTime,
+    extraLogs = [],
   }: {
+    /**
+     * name of the zip file
+     */
     name?: string;
+    /**
+     * recent time of the logs
+     */
     recentTime?: number;
+    /**
+     * extra logs
+     */
+    extraLogs?: ExtraLogs;
   } = {}) {
     const allLogs = (await this._getLogs()) ?? [];
     const allSessions = new Set(allLogs.map((log) => log.session));
@@ -332,6 +354,54 @@ export class StorageTransport implements ITransport {
         .join('\n');
       historyFolder.file(`${session}.log`, `${_logs}\n`);
     }
+    for (const extraLog of extraLogs) {
+      zip.file(extraLog.fileName, `${extraLog.log}\n`);
+    }
+    return {
+      name,
+      zip,
+    };
+  }
+
+  /**
+   * get logs in the recent time
+   */
+  async getLogs({
+    name: _name = this.name,
+    recentTime = this.recentTime,
+    extraLogs = [],
+  }: {
+    /**
+     * name of the zip file
+     */
+    name?: string;
+    /**
+     * recent time of the logs
+     */
+    recentTime?: number;
+    /**
+     * extra logs
+     */
+    extraLogs?: ExtraLogs;
+  } = {}) {
+    const data = await this.queryLogs({
+      name: _name,
+      recentTime,
+      extraLogs,
+    });
+    if (!data) return;
+    const { zip, name } = data;
+    const content = await this.zipLogs(zip);
+    return {
+      name,
+      content,
+    };
+  }
+
+  /**
+   * zip logs
+   */
+  async zipLogs(zip: JSZip) {
     const content = await zip.generateAsync({
       type: 'blob',
       compression: 'DEFLATE',
@@ -339,10 +409,7 @@ export class StorageTransport implements ITransport {
         level: 9,
       },
     });
-    return {
-      name,
-      content,
-    };
+    return content;
   }
 
   /**
@@ -351,14 +418,25 @@ export class StorageTransport implements ITransport {
   async downloadLogs({
     name = this.name,
     recentTime = this.recentTime,
+    extraLogs = [],
   }: {
+    /**
+     * name of the zip file
+     */
     name?: string;
+    /**
+     * recent time of the logs
+     */
     recentTime?: number;
+    /**
+     * extra logs
+     */
+    extraLogs?: ExtraLogs;
   } = {}) {
     try {
       // save current logs in memory
       await this._saveDB();
-      const data = await this.getLogs({ name, recentTime });
+      const data = await this.getLogs({ name, recentTime, extraLogs });
       if (data) {
         await saveAs(data.content, `${data.name}.zip`);
       }
