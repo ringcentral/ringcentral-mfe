@@ -142,7 +142,7 @@ export class Logger implements ILogger {
   }
 
   get enabled() {
-    return (this._logger.getContext().options as ContextOptions).enabled;
+    return (this._logger.getContext().options as ContextOptions)?.enabled;
   }
 
   /**
