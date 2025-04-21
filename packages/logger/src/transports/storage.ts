@@ -79,9 +79,9 @@ interface StorageTransportOptions {
 
 export type ExtraLogs = {
   /**
-   * log content
+   * log content (string for text files, or binary data types for other formats)
    */
-  log: string;
+  log: string | ArrayBuffer | Uint8Array | Blob;
   /**
    * name of the log file
    */
@@ -355,7 +355,13 @@ export class StorageTransport implements ITransport {
       historyFolder.file(`${session}.log`, `${_logs}\n`);
     }
     for (const extraLog of extraLogs) {
-      zip.file(extraLog.fileName, `${extraLog.log}\n`);
+      // Append a newline for string logs to ensure proper text formatting.
+      // Binary data is treated as raw data and does not require a newline.
+      if (typeof extraLog.log === 'string') {
+        zip.file(extraLog.fileName, `${extraLog.log}\n`);
+      } else {
+        zip.file(extraLog.fileName, extraLog.log);
+      }
     }
     return {
       name,
