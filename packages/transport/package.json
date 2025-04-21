@@ -1,6 +1,6 @@
 {
   "name": "@ringcentral/mfe-transport",
-  "version": "0.4.11",
+  "version": "0.4.12",
   "description": "A micro frontends framework for building Web applications",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
