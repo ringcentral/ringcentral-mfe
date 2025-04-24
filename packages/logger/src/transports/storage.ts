@@ -295,14 +295,21 @@ export class StorageTransport implements ITransport {
 
   protected async _pruneLogs() {
     await this._deleteExpiredLogs();
-    const logs = (await this._getLogs()) ?? [];
     let totalSize = 0;
-    for (const log of logs) {
-      totalSize += log.size;
-      if (totalSize > this.maxLogsSize) {
-        await this._deleteLogs(log.time);
-        break;
-      }
+    let cutoffTime = 0;
+    try {
+      await this._table?.orderBy('time').each((log: Logs) => {
+        totalSize += log.size;
+        if (totalSize > this.maxLogsSize) {
+          cutoffTime = log.time;
+          throw new Error('cutoff found');
+        }
+      });
+    } catch (_) {
+      // ignore
+    }
+    if (cutoffTime) {
+      await this._deleteLogs(cutoffTime);
     }
   }
 
