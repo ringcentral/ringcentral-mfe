@@ -293,23 +293,37 @@ export class StorageTransport implements ITransport {
     return this._options.maxLogsSize ?? DEFAULT_MAX_LOGS_SIZE;
   }
 
+  // fast way to get total size of logs
+  protected async _getTotalSize() {
+    const sizes =
+      ((await this._table?.orderBy('size').keys()) as number[]) ?? [];
+    return sizes.reduce((acc, size) => {
+      return acc + size;
+    }, 0);
+  }
+
   protected async _pruneLogs() {
     await this._deleteExpiredLogs();
-    let totalSize = 0;
-    let cutoffTime = 0;
-    try {
-      await this._table?.orderBy('time').each((log: Logs) => {
-        totalSize += log.size;
-        if (totalSize > this.maxLogsSize) {
-          cutoffTime = log.time;
-          throw new Error('cutoff found');
-        }
-      });
-    } catch (_) {
-      // ignore
-    }
-    if (cutoffTime) {
-      await this._deleteLogs(cutoffTime);
+    // only prune logs if total size is greater than maxLogsSize
+    if ((await this._getTotalSize()) > this.maxLogsSize) {
+      let totalSize = 0;
+      let cutoffTime = 0;
+      try {
+        // use cursor to avoid reading all logs into memory
+        await this._table?.orderBy('time').each((log: Logs) => {
+          totalSize += log.size;
+          if (totalSize > this.maxLogsSize) {
+            cutoffTime = log.time;
+            // throw error to break the loop once cutoffTime is found
+            throw new Error('cutoff found');
+          }
+        });
+      } catch (_) {
+        // ignore
+      }
+      if (cutoffTime) {
+        await this._deleteLogs(cutoffTime);
+      }
     }
   }
 
