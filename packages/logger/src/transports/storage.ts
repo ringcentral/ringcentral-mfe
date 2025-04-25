@@ -307,7 +307,7 @@ export class StorageTransport implements ITransport {
     // only prune logs if total size is greater than maxLogsSize
     const totalLogSize = await this._getTotalSize();
     if (totalLogSize > this.maxLogsSize) {
-      let size = this.maxLogsSize;
+      let sizeOverBy = this.maxLogsSize;
       let cutoffTime = 0;
 
       try {
@@ -315,8 +315,8 @@ export class StorageTransport implements ITransport {
           ?.orderBy('time')
           .reverse()
           .each((log: Logs) => {
-            size -= log.size;
-            if (size <= 0 && cutoffTime === 0) {
+            sizeOverBy -= log.size;
+            if (sizeOverBy <= 0 && cutoffTime === 0) {
               cutoffTime = log.time;
             }
           });
