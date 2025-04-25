@@ -41,6 +41,6 @@
     "@ringcentral/mfe-shared": "^0.1.0"
   },
   "dependencies": {
-    "data-transport": "^4.5.0"
+    "data-transport": "^5.0.1"
   }
 }
