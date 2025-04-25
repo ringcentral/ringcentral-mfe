@@ -3414,10 +3414,10 @@ dargs@^7.0.0:
   resolved "https://registry.npmjs.org/dargs/-/dargs-7.0.0.tgz"
   integrity sha512-2iy1EkLdlBzQGvbweYRFxmFath8+K7+AKB0TlhHWkNuH+TmovaMH/Wp7V7R4u7f4SnX3OgLsU9t1NI9ioDnUpg==
 
-data-transport@^4.5.0:
-  version "4.5.0"
-  resolved "https://registry.yarnpkg.com/data-transport/-/data-transport-4.5.0.tgz#c8112cf01c13d65181a1b60b6529b29f46084aa5"
-  integrity sha512-FWaTFU3O6FVAjIsa3kR2AwUbTSpz7Ijh51W/pQ+RULpLf/YuANERJFGhX4TGM4by2D5hGAdux6LttxlJQ/P+5Q==
+data-transport@^5.0.1:
+  version "5.0.1"
+  resolved "https://registry.yarnpkg.com/data-transport/-/data-transport-5.0.1.tgz#ada571edfa652cb3b1e968a30612e2735cab2863"
+  integrity sha512-syr9g1dx/YIQvlZLQDGvG28mR6tDcqLxQI16y9td2ByIII2Kr8W3r1D/bLbYJs54ArH/T0lFEXfjhvnH2KvRZA==
   dependencies:
     uuid "^9.0.0"
 
