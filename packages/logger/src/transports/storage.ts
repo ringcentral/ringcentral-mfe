@@ -310,21 +310,18 @@ export class StorageTransport implements ITransport {
       let sizeOverBy = this.maxLogsSize;
       let cutoffTime = 0;
 
-      try {
-        await this._table
-          ?.orderBy('time')
-          .reverse()
-          .until((log: Logs) => {
-            sizeOverBy -= log.size;
-            if (sizeOverBy <= 0) {
-              cutoffTime = log.time;
-              return true;
-            }
-            return false;
-          });
-      } catch (_) {
-        // ignore
-      }
+      await this._table
+        ?.orderBy('time')
+        .reverse()
+        .until((log: Logs) => {
+          sizeOverBy -= log.size;
+          if (sizeOverBy <= 0) {
+            cutoffTime = log.time;
+            return true;
+          }
+          return false;
+        })
+        .toArray();
 
       if (cutoffTime > 0) {
         await this._deleteLogs(cutoffTime);
