@@ -1,10 +1,10 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable consistent-return */
-import { getLogLevelName, Message } from 'roarr';
 import { global } from '@ringcentral/mfe-shared';
 import Dexie from 'dexie';
-import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+import JSZip from 'jszip';
+import { getLogLevelName, Message } from 'roarr';
 import { stringify } from 'safe-stable-stringify';
 
 import type {
@@ -310,19 +310,18 @@ export class StorageTransport implements ITransport {
       let sizeOverBy = this.maxLogsSize;
       let cutoffTime = 0;
 
-      try {
-        await this._table
-          ?.orderBy('time')
-          .reverse()
-          .each((log: Logs) => {
-            sizeOverBy -= log.size;
-            if (sizeOverBy <= 0 && cutoffTime === 0) {
-              cutoffTime = log.time;
-            }
-          });
-      } catch (_) {
-        // ignore
-      }
+      await this._table
+        ?.orderBy('time')
+        .reverse()
+        .until((log: Logs) => {
+          sizeOverBy -= log.size;
+          if (sizeOverBy <= 0) {
+            cutoffTime = log.time;
+            return true;
+          }
+          return false;
+        })
+        .toArray();
 
       if (cutoffTime > 0) {
         await this._deleteLogs(cutoffTime);
