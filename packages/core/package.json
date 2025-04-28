@@ -1,6 +1,6 @@
 {
   "name": "@ringcentral/mfe-core",
-  "version": "0.4.14",
+  "version": "0.4.15",
   "description": "A micro frontends framework for building Web applications",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -22,8 +22,8 @@
     "test": "jest --watch"
   },
   "dependencies": {
-    "@ringcentral/mfe-shared": "^0.4.14",
-    "@ringcentral/mfe-transport": "^0.4.14"
+    "@ringcentral/mfe-shared": "^0.4.15",
+    "@ringcentral/mfe-transport": "^0.4.15"
   },
   "bugs": {
     "url": "https://github.com/ringcentral/ringcentral-mfe/issues"
