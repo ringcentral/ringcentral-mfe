@@ -308,23 +308,22 @@ export class StorageTransport implements ITransport {
   }
 
   // fast way to get total size of logs
-  protected async _getTotalSize() {
+  protected async _getTotalSizeAndLogs() {
     const logs = (await this._table?.toArray()) ?? [];
-    return logs.reduce((acc, log) => {
+    const totalLogSize = logs.reduce((acc, log) => {
       return acc + (log.size || 0);
     }, 0);
+    return { totalLogSize, logs };
   }
 
   protected async _pruneLogs() {
     await this._deleteExpiredLogs();
     // only prune logs if total size is greater than maxLogsSize
-    const totalLogSize = await this._getTotalSize();
+    const { totalLogSize, logs } = await this._getTotalSizeAndLogs();
     if (totalLogSize > this.maxLogsSize) {
       let sizeOverBy = totalLogSize - this.maxLogsSize;
       let cutoffTime = 0;
 
-      // Get all logs and sort by time
-      const logs = (await this._table?.toArray()) ?? [];
       logs.sort((a, b) => a.time - b.time); // Ascending order (oldest first)
 
       // Find the cutoff time where we've exceeded our target size reduction
