@@ -157,15 +157,18 @@ export class StorageTransport implements ITransport {
   }
 
   get name() {
-    return `${this._options.prefix ?? 'rc-mfe'}-logs`;
+    return `${this._options.prefix ?? 'rc-mfe'}-log`;
   }
 
   protected async _initDB() {
     const db = new Dexie(this.name);
     db.version(this._options.version ?? 1).stores({
-      logs: '&time, size, messages, session',
+      logs: '&time',
     });
     this._table = db.table('logs');
+    db.open().catch((err) => {
+      console.error(`StorageTransport.initDB:`, err);
+    });
   }
 
   protected _data: Logs = {
@@ -240,11 +243,22 @@ export class StorageTransport implements ITransport {
   protected _savingLogs = new Set<Logs>();
 
   protected async _checkTimeKey(time: number): Promise<number> {
-    const count = await this._table?.where('time').equals(time).count();
-    if (count) {
-      return this._checkTimeKey(time + 1);
+    // Ensure time is a valid number - Dexie requires proper number type
+    const validTime = Number(time);
+    if (Number.isNaN(validTime)) {
+      return Date.now(); // Fallback to current timestamp if invalid
     }
-    return time;
+
+    try {
+      const count = await this._table?.where('time').equals(validTime).count();
+      if (count) {
+        return this._checkTimeKey(validTime + 1);
+      }
+      return validTime;
+    } catch (error) {
+      console.error('Error in _checkTimeKey:', error);
+      return validTime + 1; // Move to next time value in case of error
+    }
   }
 
   protected async _saveLogs(data: Logs) {
@@ -295,10 +309,9 @@ export class StorageTransport implements ITransport {
 
   // fast way to get total size of logs
   protected async _getTotalSize() {
-    const sizes =
-      ((await this._table?.orderBy('size').keys()) as number[]) ?? [];
-    return sizes.reduce((acc, size) => {
-      return acc + size;
+    const logs = (await this._table?.toArray()) ?? [];
+    return logs.reduce((acc, log) => {
+      return acc + (log.size || 0);
     }, 0);
   }
 
@@ -307,24 +320,26 @@ export class StorageTransport implements ITransport {
     // only prune logs if total size is greater than maxLogsSize
     const totalLogSize = await this._getTotalSize();
     if (totalLogSize > this.maxLogsSize) {
-      let sizeOverBy = this.maxLogsSize;
+      let sizeOverBy = totalLogSize - this.maxLogsSize;
       let cutoffTime = 0;
 
-      await this._table
-        ?.orderBy('time')
-        .reverse()
-        .until((log: Logs) => {
-          sizeOverBy -= log.size;
-          if (sizeOverBy <= 0) {
-            cutoffTime = log.time;
-            return true;
-          }
-          return false;
-        })
-        .toArray();
+      // Get all logs and sort by time
+      const logs = (await this._table?.toArray()) ?? [];
+      logs.sort((a, b) => a.time - b.time); // Ascending order (oldest first)
+
+      // Find the cutoff time where we've exceeded our target size reduction
+      for (const log of logs) {
+        sizeOverBy -= log.size;
+        if (sizeOverBy <= 0) {
+          // We'll keep this log and delete everything before it
+          cutoffTime = log.time;
+          break;
+        }
+      }
 
       if (cutoffTime > 0) {
-        await this._deleteLogs(cutoffTime);
+        // Delete all logs with time strictly less than cutoffTime
+        await this._table?.where('time').below(cutoffTime).delete();
       }
     }
   }
@@ -355,13 +370,26 @@ export class StorageTransport implements ITransport {
     extraLogs?: ExtraLogs;
   } = {}) {
     const allLogs = (await this._getLogs()) ?? [];
-    const allSessions = new Set(allLogs.map((log) => log.session));
+    const allSessions = new Set<string>();
+
+    // Collect all valid sessions
+    allLogs.forEach((log) => {
+      if (log.session) {
+        allSessions.add(log.session);
+      }
+    });
+
+    // Get recent logs by time
     const data =
       (await this._table
         ?.where('time')
         .above(Date.now() - recentTime)
-        .sortBy('time')) ?? [];
+        .toArray()) ?? [];
+
     if (!data.length) return;
+
+    data.sort((a, b) => a.time - b.time);
+
     const endTime = new Date(data[data.length - 1].time).toISOString();
     const startTime = new Date(data[0].time).toISOString();
     const name = `${_name}_${startTime}_${endTime}`;
@@ -370,13 +398,17 @@ export class StorageTransport implements ITransport {
     const logFolder = zip.folder(name)!;
     logFolder.file('recent.log', `${logs}\n`);
     const historyFolder = logFolder.folder('history')!;
+
+    // Process each session
     for (const session of allSessions) {
-      const _logs = allLogs
+      const sessionLogs = allLogs
         .filter((log) => log.session === session)
+        .sort((a, b) => a.time - b.time)
         .map((item) => item.messages.join('\n'))
         .join('\n');
-      historyFolder.file(`${session}.log`, `${_logs}\n`);
+      historyFolder.file(`${session}.log`, `${sessionLogs}\n`);
     }
+
     for (const extraLog of extraLogs) {
       // Append a newline for string logs to ensure proper text formatting.
       // Binary data is treated as raw data and does not require a newline.
