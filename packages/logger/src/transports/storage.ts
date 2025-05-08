@@ -308,37 +308,37 @@ export class StorageTransport implements ITransport {
   }
 
   // fast way to get total size of logs
-  protected async _getTotalSizeAndLogs() {
+  protected async _getTotalSize() {
     const logs = (await this._table?.toArray()) ?? [];
     const totalLogSize = logs.reduce((acc, log) => {
       return acc + (log.size || 0);
     }, 0);
-    return { totalLogSize, logs };
+    return totalLogSize;
   }
 
   protected async _pruneLogs() {
     await this._deleteExpiredLogs();
     // only prune logs if total size is greater than maxLogsSize
-    const { totalLogSize, logs } = await this._getTotalSizeAndLogs();
+    const totalLogSize = await this._getTotalSize();
     if (totalLogSize > this.maxLogsSize) {
-      let sizeOverBy = totalLogSize - this.maxLogsSize;
+      let sizeOverBy = this.maxLogsSize;
       let cutoffTime = 0;
 
-      logs.sort((a, b) => a.time - b.time); // Ascending order (oldest first)
-
-      // Find the cutoff time where we've exceeded our target size reduction
-      for (const log of logs) {
-        sizeOverBy -= log.size;
-        if (sizeOverBy <= 0) {
-          // We'll keep this log and delete everything before it
-          cutoffTime = log.time;
-          break;
-        }
-      }
+      await this._table
+        ?.orderBy('time')
+        .reverse()
+        .until((log: Logs) => {
+          sizeOverBy -= log.size;
+          if (sizeOverBy <= 0) {
+            cutoffTime = log.time;
+            return true;
+          }
+          return false;
+        })
+        .toArray();
 
       if (cutoffTime > 0) {
-        // Delete all logs with time strictly less than cutoffTime
-        await this._table?.where('time').below(cutoffTime).delete();
+        await this._deleteLogs(cutoffTime);
       }
     }
   }
