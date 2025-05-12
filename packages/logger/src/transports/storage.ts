@@ -112,8 +112,12 @@ export class StorageTransport implements ITransport {
         const key = `${this._tempKey}-prune-time`;
         const PrunedTime = global.localStorage.getItem(key);
         if (PrunedTime !== new Date().toLocaleDateString()) {
-          this._pruneLogs();
-          global.localStorage.setItem(key, new Date().toLocaleDateString());
+          setTimeout(() => {
+            this._pruneLogs();
+            global.localStorage.setItem(key, new Date().toLocaleDateString());
+            // Avoid running during peak startup load.
+            // 5 seconds later
+          }, 5 * 1000);
         }
       }
       setInterval(() => {
