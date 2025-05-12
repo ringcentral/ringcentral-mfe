@@ -108,7 +108,14 @@ export class StorageTransport implements ITransport {
         console.error('StorageTransport.initDB:', err);
       });
       this._onUnload();
-      this._pruneLogs();
+      if (global.localStorage) {
+        const key = `${this._tempKey}-prune-time`;
+        const PrunedTime = global.localStorage.getItem(key);
+        if (PrunedTime !== new Date().toLocaleDateString()) {
+          this._pruneLogs();
+          global.localStorage.setItem(key, new Date().toLocaleDateString());
+        }
+      }
       setInterval(() => {
         this._pruneLogs();
       }, this.expiredTime);
@@ -307,38 +314,15 @@ export class StorageTransport implements ITransport {
     return this._options.maxLogsSize ?? DEFAULT_MAX_LOGS_SIZE;
   }
 
-  // fast way to get total size of logs
-  protected async _getTotalSize() {
-    const logs = (await this._table?.toArray()) ?? [];
-    const totalLogSize = logs.reduce((acc, log) => {
-      return acc + (log.size || 0);
-    }, 0);
-    return totalLogSize;
-  }
-
   protected async _pruneLogs() {
     await this._deleteExpiredLogs();
-    // only prune logs if total size is greater than maxLogsSize
-    const totalLogSize = await this._getTotalSize();
-    if (totalLogSize > this.maxLogsSize) {
-      let sizeOverBy = this.maxLogsSize;
-      let cutoffTime = 0;
-
-      await this._table
-        ?.orderBy('time')
-        .reverse()
-        .until((log: Logs) => {
-          sizeOverBy -= log.size;
-          if (sizeOverBy <= 0) {
-            cutoffTime = log.time;
-            return true;
-          }
-          return false;
-        })
-        .toArray();
-
-      if (cutoffTime > 0) {
-        await this._deleteLogs(cutoffTime);
+    const logs = (await this._getLogs()) ?? [];
+    let totalSize = 0;
+    for (const log of logs) {
+      totalSize += log.size;
+      if (totalSize > this.maxLogsSize) {
+        await this._deleteLogs(log.time);
+        break;
       }
     }
   }
@@ -444,6 +428,8 @@ export class StorageTransport implements ITransport {
      */
     extraLogs?: ExtraLogs;
   } = {}) {
+    // before query logs, prune logs
+    this._pruneLogs();
     const data = await this.queryLogs({
       name: _name,
       recentTime,
