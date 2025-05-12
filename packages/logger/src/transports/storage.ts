@@ -429,7 +429,7 @@ export class StorageTransport implements ITransport {
     extraLogs?: ExtraLogs;
   } = {}) {
     // before query logs, prune logs
-    this._pruneLogs();
+    await this._pruneLogs();
     const data = await this.queryLogs({
       name: _name,
       recentTime,
