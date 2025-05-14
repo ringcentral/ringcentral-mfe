@@ -168,13 +168,13 @@ export class StorageTransport implements ITransport {
   }
 
   get name() {
-    return `${this._options.prefix ?? 'rc-mfe'}-log`;
+    return `${this._options.prefix ?? 'rc-mfe'}:log`;
   }
 
   protected async _initDB() {
     const db = new Dexie(this.name);
     db.version(this._options.version ?? 1).stores({
-      logs: '&time',
+      logs: '&time, size',
     });
     this._table = db.table('logs');
     db.open().catch((err) => {
@@ -254,22 +254,11 @@ export class StorageTransport implements ITransport {
   protected _savingLogs = new Set<Logs>();
 
   protected async _checkTimeKey(time: number): Promise<number> {
-    // Ensure time is a valid number - Dexie requires proper number type
-    const validTime = Number(time);
-    if (Number.isNaN(validTime)) {
-      return Date.now(); // Fallback to current timestamp if invalid
+    const count = await this._table?.where('time').equals(time).count();
+    if (count) {
+      return this._checkTimeKey(time + 1);
     }
-
-    try {
-      const count = await this._table?.where('time').equals(validTime).count();
-      if (count) {
-        return this._checkTimeKey(validTime + 1);
-      }
-      return validTime;
-    } catch (error) {
-      console.error('Error in _checkTimeKey:', error);
-      return validTime + 1; // Move to next time value in case of error
-    }
+    return time;
   }
 
   protected async _saveLogs(data: Logs) {
@@ -318,15 +307,38 @@ export class StorageTransport implements ITransport {
     return this._options.maxLogsSize ?? DEFAULT_MAX_LOGS_SIZE;
   }
 
+  // fast way to get total size of logs
+  protected async _getTotalSize() {
+    const sizes =
+      ((await this._table?.orderBy('size').keys()) as number[]) ?? [];
+    return sizes.reduce((acc, size) => {
+      return acc + size;
+    }, 0);
+  }
+
   protected async _pruneLogs() {
     await this._deleteExpiredLogs();
-    const logs = (await this._getLogs()) ?? [];
-    let totalSize = 0;
-    for (const log of logs) {
-      totalSize += log.size;
-      if (totalSize > this.maxLogsSize) {
-        await this._deleteLogs(log.time);
-        break;
+    // only prune logs if total size is greater than maxLogsSize
+    const totalLogSize = await this._getTotalSize();
+    if (totalLogSize > this.maxLogsSize) {
+      let sizeOverBy = this.maxLogsSize;
+      let cutoffTime = 0;
+
+      await this._table
+        ?.orderBy('time')
+        .reverse()
+        .until((log: Logs) => {
+          sizeOverBy -= log.size;
+          if (sizeOverBy <= 0) {
+            cutoffTime = log.time;
+            return true;
+          }
+          return false;
+        })
+        .toArray();
+
+      if (cutoffTime > 0) {
+        await this._deleteLogs(cutoffTime);
       }
     }
   }
@@ -357,26 +369,13 @@ export class StorageTransport implements ITransport {
     extraLogs?: ExtraLogs;
   } = {}) {
     const allLogs = (await this._getLogs()) ?? [];
-    const allSessions = new Set<string>();
-
-    // Collect all valid sessions
-    allLogs.forEach((log) => {
-      if (log.session) {
-        allSessions.add(log.session);
-      }
-    });
-
-    // Get recent logs by time
+    const allSessions = new Set(allLogs.map((log) => log.session));
     const data =
       (await this._table
         ?.where('time')
         .above(Date.now() - recentTime)
-        .toArray()) ?? [];
-
+        .sortBy('time')) ?? [];
     if (!data.length) return;
-
-    data.sort((a, b) => a.time - b.time);
-
     const endTime = new Date(data[data.length - 1].time).toISOString();
     const startTime = new Date(data[0].time).toISOString();
     const name = `${_name}_${startTime}_${endTime}`;
@@ -385,17 +384,13 @@ export class StorageTransport implements ITransport {
     const logFolder = zip.folder(name)!;
     logFolder.file('recent.log', `${logs}\n`);
     const historyFolder = logFolder.folder('history')!;
-
-    // Process each session
     for (const session of allSessions) {
-      const sessionLogs = allLogs
+      const _logs = allLogs
         .filter((log) => log.session === session)
-        .sort((a, b) => a.time - b.time)
         .map((item) => item.messages.join('\n'))
         .join('\n');
-      historyFolder.file(`${session}.log`, `${sessionLogs}\n`);
+      historyFolder.file(`${session}.log`, `${_logs}\n`);
     }
-
     for (const extraLog of extraLogs) {
       // Append a newline for string logs to ensure proper text formatting.
       // Binary data is treated as raw data and does not require a newline.
