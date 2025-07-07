@@ -128,9 +128,9 @@ export function getEntryFromRegistry(
           );
         }
         if (prefix === '*') {
-          console.warn(
-            `[MFE] The entry of ${dependency} is being cached, but prefix is not validly set, pls set 'prefix' in 'site.config'.`
-          );
+          // console.warn(
+          //   `[MFE] The entry of ${dependency} is being cached, but prefix is not validly set, pls set 'prefix' in 'site.config'.`
+          // );
         }
         if (!autoStore) return remoteData;
         const result = storage.setItem(
