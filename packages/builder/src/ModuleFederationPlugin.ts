@@ -3,6 +3,12 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable prefer-destructuring */
 import { BannerPlugin, container, Compiler, DefinePlugin } from 'webpack';
+import type { Compiler } from 'webpack';
+// Support both webpack and Rspack. Set BUNDLER=rspack to use @rspack/core.
+// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-shadow
+const { BannerPlugin, container, DefinePlugin } = (
+process.env.BUNDLER === 'rspack' ? require('@rspack/core') : require('webpack')
+) as typeof import('webpack');
 import {
   getEntryFromRegistry,
   fetchWithJsonp,
