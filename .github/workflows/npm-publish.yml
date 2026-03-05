@@ -2,7 +2,7 @@ name: Node.js Package
 
 on:
   release:
-    types: [created]
+    types: [released, prereleased]
 
 jobs:
   publish-npm:
@@ -17,7 +17,18 @@ jobs:
       - run: yarn build
       - run: yarn ci:test
       - run: yarn pre:publish
-      - run: npm run publish
+      - name: Decide npm dist-tag
+        id: dist_tag
+        run: |
+          if [[ "${{ github.event.release.tag_name }}" == *"-beta."* ]]; then
+            echo "value=beta" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event.release.prerelease }}" == "true" ]]; then
+            echo "Unsupported prerelease tag: ${{ github.event.release.tag_name }}. Use *-beta.* or adjust workflow mapping."
+            exit 1
+          else
+            echo "value=latest" >> "$GITHUB_OUTPUT"
+          fi
+      - run: npm run publish -- --tag ${{ steps.dist_tag.outputs.value }}
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_AUTH_TOKEN}}
           CI: true
