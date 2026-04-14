@@ -1,6 +1,6 @@
 {
   "name": "@ringcentral/mfe-builder",
-  "version": "0.4.18",
+  "version": "0.4.19",
   "description": "A micro frontends framework for building Web applications",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -38,7 +38,13 @@
   "license": "MIT",
   "peerDependencies": {
     "@ringcentral/mfe-shared": "^0.1.0",
+    "@rspack/core": ">=1.0.0",
     "webpack": "^5.75.0"
+  },
+  "peerDependenciesMeta": {
+    "@rspack/core": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "webpack": "^5.75.0"
