@@ -195,12 +195,34 @@ yarn ci:test
 
 ### Publish a new version
 
-1. Run `yarn update:version` to update the version of the package.
-2. Submit PR and wait for the CI to pass.
-3. Merge PR after the review.
-4. Draft a new release in the GitHub release page [https://github.com/ringcentral/ringcentral-mfe/releases](https://github.com/ringcentral/ringcentral-mfe/releases).
+This repo publishes packages through GitHub Actions when a GitHub Release is published.
 
-> Release title should be like `x.x.x`
+1. Update package versions.
+
+```sh
+# stable release (example: 0.4.19)
+yarn update:version patch
+
+# first beta release (example: 0.4.19-beta.0)
+yarn update:version prepatch --preid beta
+
+# next beta release (example: 0.4.19-beta.1)
+yarn update:version prerelease --preid beta
+```
+
+2. Submit PR and wait for CI to pass.
+3. Merge PR after review.
+4. Create a release in GitHub:
+   - Stable release:
+     - Tag format: `vX.Y.Z` (for example `v0.4.19`)
+     - Do not mark as pre-release
+     - Published to npm dist-tag `latest`
+   - Beta release:
+     - Tag format: `vX.Y.Z-beta.N` (for example `v0.4.19-beta.0`)
+     - Mark as `This is a pre-release`
+     - Published to npm dist-tag `beta`
+
+> Safety check: if a GitHub pre-release tag does not contain `-beta.`, the publish workflow will fail intentionally.
 
 ## License
 
