@@ -38,7 +38,13 @@
   "license": "MIT",
   "peerDependencies": {
     "@ringcentral/mfe-shared": "^0.1.0",
+    "@rspack/core": ">=1.0.0",
     "webpack": "^5.75.0"
+  },
+  "peerDependenciesMeta": {
+    "@rspack/core": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "webpack": "^5.75.0"
