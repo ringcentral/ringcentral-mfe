@@ -1,14 +1,7 @@
+/* eslint-disable global-require */
 /* eslint-disable @typescript-eslint/no-shadow */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable prefer-destructuring */
-import { BannerPlugin, container, Compiler, DefinePlugin } from 'webpack';
 import type { Compiler } from 'webpack';
-// Support both webpack and Rspack. Set BUNDLER=rspack to use @rspack/core.
-// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-shadow
-const { BannerPlugin, container, DefinePlugin } = (
-process.env.BUNDLER === 'rspack' ? require('@rspack/core') : require('webpack')
-) as typeof import('webpack');
 import {
   getEntryFromRegistry,
   fetchWithJsonp,
@@ -25,6 +18,15 @@ import {
 import { getModuleFederationConfig, getSiteConfig } from './getConfig';
 import { getEnv } from './getEnv';
 import { makeBannerScript } from './make';
+
+// Support both webpack and Rspack. Set the BUNDLER=rspack environment variable
+// when invoking webpack CLI / rspack CLI to switch to @rspack/core at runtime.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { BannerPlugin, container, DefinePlugin } = (
+  process.env.BUNDLER === 'rspack'
+    ? require('@rspack/core')
+    : require('webpack')
+) as typeof import('webpack');
 
 // use `--env spa` for webpack cli
 const SPA_CLI = 'spa';
@@ -56,12 +58,29 @@ export const getBannerScript = ({
   )});`;
 
 /**
- * Webpack plugin for module federation In RC-MFE
+ * Module federation plugin for RC-MFE.
+ *
+ * Compatible with both **webpack** (default) and **Rspack**.
+ * Set the `BUNDLER=rspack` environment variable to use `@rspack/core` instead of webpack.
+ *
+ * @example webpack (default)
+ * ```js
+ * // webpack.config.js
+ * const { ModuleFederationPlugin } = require('@ringcentral/mfe-builder');
+ * module.exports = { plugins: [new ModuleFederationPlugin()] };
+ * ```
+ *
+ * @example rspack
+ * ```js
+ * // rspack.config.js  (run with BUNDLER=rspack)
+ * const { ModuleFederationPlugin } = require('@ringcentral/mfe-builder');
+ * module.exports = { plugins: [new ModuleFederationPlugin()] };
+ * ```
  */
 class ModuleFederationPlugin extends container.ModuleFederationPlugin {
-  bannerPlugin: BannerPlugin;
+  bannerPlugin: InstanceType<typeof BannerPlugin>;
 
-  definePlugin: DefinePlugin;
+  definePlugin: InstanceType<typeof DefinePlugin>;
 
   constructor(
     siteExtraConfig?: SiteOverridableConfig,

@@ -1,0 +1,8 @@
+{
+  "packages": [
+    "host",
+    "remote"
+  ],
+  "version": "independent",
+  "useWorkspaces": true
+}
