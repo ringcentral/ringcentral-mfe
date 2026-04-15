@@ -1,0 +1,19 @@
+{
+  "name": "bundler-switching",
+  "private": true,
+  "workspaces": [
+    "host",
+    "remote"
+  ],
+  "scripts": {
+    "start": "lerna run --parallel start:webpack",
+    "start:webpack": "lerna run --parallel start:webpack",
+    "start:rspack": "lerna run --parallel start:rspack",
+    "build:webpack": "lerna run build:webpack",
+    "build:rspack": "lerna run build:rspack",
+    "clean": "lerna run --parallel clean"
+  },
+  "devDependencies": {
+    "lerna": "^5.6.2"
+  }
+}
