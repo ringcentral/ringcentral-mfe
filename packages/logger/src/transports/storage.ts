@@ -312,14 +312,10 @@ export class StorageTransport implements ITransport {
   }
 
   protected _saveLogs(data: Logs, throwOnError = false) {
+    this._savingLogs.add(data);
     const saveOperation = this.savingLogsPromise.then(async () => {
-      this._savingLogs.add(data);
-      try {
-        await this._addLogs(data);
-        this._savingLogs.delete(data);
-      } catch (error) {
-        throw error;
-      }
+      await this._addLogs(data);
+      this._savingLogs.delete(data);
     });
     this.savingLogsPromise = saveOperation.catch(() => undefined);
     if (throwOnError) {
@@ -534,7 +530,7 @@ export class StorageTransport implements ITransport {
   } = {}) {
     try {
       // save current logs in memory
-      await this._saveDB();
+      await this._saveDB(true);
       const data = await this.getLogs({ name, recentTime, extraLogs });
       if (data) {
         await saveAs(data.content, `${data.name}.zip`);

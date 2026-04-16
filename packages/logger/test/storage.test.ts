@@ -22,6 +22,12 @@ jest.mock('dexie', () => {
   return DexieMock;
 });
 
+jest.mock('file-saver', () => ({
+  saveAs: jest.fn(),
+}));
+
+import { saveAs } from 'file-saver';
+
 import { StorageTransport } from '../src/transports/storage';
 
 type Logs = {
@@ -112,6 +118,8 @@ const flushPromises = async () => {
 
 describe('StorageTransport', () => {
   afterEach(() => {
+    jest.restoreAllMocks();
+    jest.clearAllMocks();
     jest.useRealTimers();
     window.localStorage.clear();
   });
@@ -226,6 +234,34 @@ describe('StorageTransport', () => {
     expect(JSON.parse(saved!)).toEqual([createLogs(42)]);
   });
 
+  test('persists queued batches to temp storage before unload', async () => {
+    let resolveFirstWrite!: () => void;
+    const firstWrite = new Promise<void>((resolve) => {
+      resolveFirstWrite = resolve;
+    });
+    const transport = new TestStorageTransport();
+    const firstLogs = createLogs(1);
+    const secondLogs = createLogs(2);
+    const add = jest
+      .fn<Promise<void>, [Logs]>()
+      .mockImplementationOnce(() => firstWrite)
+      .mockResolvedValueOnce(undefined);
+
+    transport.setTable({ add });
+
+    const firstSave = transport.persistLogs(firstLogs, true);
+    const secondSave = transport.persistLogs(secondLogs, true);
+
+    transport.saveTempLogs();
+
+    const saved = window.localStorage.getItem(transport.tempKey);
+    expect(saved).not.toBeNull();
+    expect(JSON.parse(saved!)).toEqual([firstLogs, secondLogs]);
+
+    resolveFirstWrite();
+    await Promise.all([firstSave, secondSave]);
+  });
+
   test('does not remove another instance temp storage when current instance has no logs', () => {
     const writer = new TestStorageTransport();
     const idle = new TestStorageTransport();
@@ -263,5 +299,21 @@ describe('StorageTransport', () => {
     expect(
       window.localStorage.getItem(`${transport.tempKeyPrefix}:other-instance`)
     ).toBeNull();
+  });
+
+  test('rejects download when flushing current logs fails', async () => {
+    const error = new Error('save failed');
+    const transport = new TestStorageTransport();
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    transport.setTable({
+      add: jest.fn(async () => {
+        throw error;
+      }),
+    });
+    transport.setCurrentData(createLogs(99));
+
+    await expect(transport.downloadLogs()).rejects.toThrow('save failed');
+    expect(saveAs).not.toHaveBeenCalled();
   });
 });
