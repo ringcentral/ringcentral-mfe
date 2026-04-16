@@ -234,6 +234,31 @@ describe('StorageTransport', () => {
     expect(JSON.parse(saved!)).toEqual([createLogs(42)]);
   });
 
+  test('saveDB retries retained failed batches before pruning', async () => {
+    const failedLogs = createLogs(50);
+    const transport = new TestStorageTransport();
+    const add = jest
+      .fn<Promise<void>, [Logs]>()
+      .mockRejectedValueOnce(new Error('save failed'))
+      .mockResolvedValueOnce(undefined);
+    const pruneLogs = jest
+      .spyOn(transport as any, '_pruneLogs')
+      .mockResolvedValue(undefined);
+
+    transport.setTable({ add });
+
+    await expect(transport.persistLogs(failedLogs, true)).rejects.toThrow(
+      'save failed'
+    );
+
+    await transport.saveDB();
+
+    expect(add).toHaveBeenCalledTimes(2);
+    expect(add).toHaveBeenNthCalledWith(2, failedLogs);
+    expect(transport.savingLogsSize).toBe(0);
+    expect(pruneLogs).toHaveBeenCalledTimes(1);
+  });
+
   test('persists queued batches to temp storage before unload', async () => {
     let resolveFirstWrite!: () => void;
     const firstWrite = new Promise<void>((resolve) => {
@@ -315,5 +340,32 @@ describe('StorageTransport', () => {
 
     await expect(transport.downloadLogs()).rejects.toThrow('save failed');
     expect(saveAs).not.toHaveBeenCalled();
+  });
+
+  test('downloadLogs retries retained failed batches before exporting', async () => {
+    const failedLogs = createLogs(60);
+    const transport = new TestStorageTransport();
+    const add = jest
+      .fn<Promise<void>, [Logs]>()
+      .mockRejectedValueOnce(new Error('save failed'))
+      .mockResolvedValueOnce(undefined);
+    const content = new Blob(['logs']);
+    const getLogs = jest
+      .spyOn(transport, 'getLogs')
+      .mockResolvedValue({ name: 'logs', content } as any);
+
+    transport.setTable({ add });
+
+    await expect(transport.persistLogs(failedLogs, true)).rejects.toThrow(
+      'save failed'
+    );
+
+    await transport.downloadLogs();
+
+    expect(add).toHaveBeenCalledTimes(2);
+    expect(add).toHaveBeenNthCalledWith(2, failedLogs);
+    expect(getLogs).toHaveBeenCalledTimes(1);
+    expect(saveAs).toHaveBeenCalledWith(content, 'logs.zip');
+    expect(transport.savingLogsSize).toBe(0);
   });
 });

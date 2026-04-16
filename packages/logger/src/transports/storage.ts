@@ -267,6 +267,7 @@ export class StorageTransport implements ITransport {
    */
   async saveDB() {
     await this._saveDB(true);
+    await this._flushSavingLogs(true);
     await this._pruneLogs();
   }
 
@@ -322,6 +323,21 @@ export class StorageTransport implements ITransport {
       return saveOperation;
     }
     return saveOperation.catch((error) => {
+      this._reportBackgroundError(error);
+    });
+  }
+
+  protected _flushSavingLogs(throwOnError = false) {
+    const flushOperation = this.savingLogsPromise.then(async () => {
+      const pendingLogs = Array.from(this._savingLogs);
+      for (const data of pendingLogs) {
+        await this._saveLogs(data, true);
+      }
+    });
+    if (throwOnError) {
+      return flushOperation;
+    }
+    return flushOperation.catch((error) => {
       this._reportBackgroundError(error);
     });
   }
@@ -531,6 +547,7 @@ export class StorageTransport implements ITransport {
     try {
       // save current logs in memory
       await this._saveDB(true);
+      await this._flushSavingLogs(true);
       const data = await this.getLogs({ name, recentTime, extraLogs });
       if (data) {
         await saveAs(data.content, `${data.name}.zip`);
