@@ -18,8 +18,23 @@ const DEFAULT_MAX_LOGS_SIZE = 1024 * 1024 * 100; // 100MB
 const DEFAULT_BATCH_TIMEOUT = 1000 * 60 * 5; // 5 minutes
 const DEFAULT_EXPIRED_TIME = 1000 * 60 * 60 * 24; // 1 day
 const DEFAULT_RECENT_TIME = 1000 * 60 * 60; // 1 hour
+const LEGACY_LOG_TABLE = 'logs';
+const LOG_TABLE = 'logs_v2';
+const CURRENT_DB_VERSION = 2;
+
+export const STORAGE_TRANSPORT_ERROR_EVENT = 'rc-mfe-storage-error';
+
+export type StorageTransportBackgroundError = {
+  error: unknown;
+  phase: 'init' | 'persist' | 'prune' | 'restore' | 'restore-parse';
+  transportName: string;
+  session?: string;
+  instanceId: string;
+  tempStorageKey?: string;
+};
 
 interface Logs {
+  id?: number;
   /**
    * time of the first log in batched logs
    */
@@ -75,6 +90,10 @@ interface StorageTransportOptions {
    * recent time for getting logs, default 1 hour
    */
   recentTime?: number;
+  /**
+   * receive non-throwing background transport errors
+   */
+  onBackgroundError?: (event: StorageTransportBackgroundError) => void;
 }
 
 export type ExtraLogs = {
@@ -97,6 +116,10 @@ export class StorageTransport implements ITransport {
 
   protected _session?: string;
 
+  protected _instanceId = `${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 10)}`;
+
   constructor(protected _options: StorageTransportOptions = {}) {}
 
   async init({ session }: TransportInitOptions) {
@@ -104,38 +127,33 @@ export class StorageTransport implements ITransport {
     this._data.session = session;
     // TODO: refactor this with teardown
     if (this._options.enabled) {
-      this._initDB().catch((err) => {
-        console.error('StorageTransport.initDB:', err);
-      });
+      this._runInBackground(this._initDB(), 'init');
       this._onUnload();
       if (global.localStorage) {
-        const key = `${this._tempKey}-prune-time`;
+        const key = this._pruneKey;
         const PrunedTime = global.localStorage.getItem(key);
         if (PrunedTime !== new Date().toLocaleDateString()) {
           setTimeout(() => {
-            this._pruneLogs();
-            global.localStorage.setItem(key, new Date().toLocaleDateString());
+            this._runInBackground(
+              this._pruneLogs().then(() => {
+                global.localStorage.setItem(key, new Date().toLocaleDateString());
+              }),
+              'prune'
+            );
             // Avoid running during peak startup load.
             // 5 seconds later
           }, 5 * 1000);
         }
       }
       setInterval(() => {
-        this._pruneLogs();
+        this._runInBackground(this._pruneLogs(), 'prune');
       }, this.expiredTime);
     }
   }
 
   protected _onUnload() {
     if (global.localStorage) {
-      const tempLogs = global.localStorage.getItem(this._tempKey);
-      if (tempLogs) {
-        global.localStorage.removeItem(this._tempKey);
-        const logs = JSON.parse(tempLogs) as Logs[];
-        logs.forEach((data) => {
-          this._saveLogs(data);
-        });
-      }
+      this._restoreTempLogs();
       window.addEventListener('beforeunload', () => {
         this._saveTemp();
       });
@@ -156,11 +174,63 @@ export class StorageTransport implements ITransport {
     }
     if (saveData.length) {
       global.localStorage.setItem(this._tempKey, stringify(saveData));
+    } else {
+      global.localStorage.removeItem(this._tempKey);
     }
   }
 
-  protected get _tempKey() {
+  protected get _tempKeyPrefix() {
     return `${this.name}-temp`;
+  }
+
+  protected get _tempKey() {
+    return `${this._tempKeyPrefix}:${this._instanceId}`;
+  }
+
+  protected get _pruneKey() {
+    return `${this.name}-prune-time`;
+  }
+
+  protected _getTempKeys() {
+    if (!global.localStorage) return [];
+    const keys: string[] = [];
+    for (let index = 0; index < global.localStorage.length; index += 1) {
+      const key = global.localStorage.key(index);
+      if (
+        key === this._tempKeyPrefix ||
+        key?.startsWith(`${this._tempKeyPrefix}:`)
+      ) {
+        keys.push(key);
+      }
+    }
+    return keys;
+  }
+
+  protected _restoreTempLogs() {
+    this._getTempKeys().forEach((key) => {
+      const tempLogs = global.localStorage.getItem(key);
+      if (!tempLogs) return;
+      try {
+        const logs = JSON.parse(tempLogs) as Logs[];
+        this._runInBackground(this._restoreTempKey(key, logs), 'restore', key);
+      } catch (error) {
+        this._reportBackgroundError(error, 'restore-parse', key);
+      }
+    });
+  }
+
+  protected async _restoreTempKey(key: string, logs: Logs[]) {
+    const pendingLogs = [...logs];
+    while (pendingLogs.length) {
+      const data = pendingLogs[0];
+      await this._saveLogs(data, true);
+      pendingLogs.shift();
+      if (pendingLogs.length) {
+        global.localStorage.setItem(key, stringify(pendingLogs));
+      } else {
+        global.localStorage.removeItem(key);
+      }
+    }
   }
 
   get options() {
@@ -173,13 +243,32 @@ export class StorageTransport implements ITransport {
 
   protected async _initDB() {
     const db = new Dexie(this.name);
-    db.version(this._options.version ?? 1).stores({
-      logs: '&time, size',
+    db.version(1).stores({
+      [LEGACY_LOG_TABLE]: '&time, size',
     });
-    this._table = db.table('logs');
-    db.open().catch((err) => {
-      console.error(`StorageTransport.initDB:`, err);
-    });
+    db.version(
+      Math.max(this._options.version ?? CURRENT_DB_VERSION, CURRENT_DB_VERSION)
+    )
+      .stores({
+        [LEGACY_LOG_TABLE]: '&time, size',
+        [LOG_TABLE]: '++id, time, size',
+      })
+      .upgrade(async (tx) => {
+        const legacyLogs = (await tx.table(LEGACY_LOG_TABLE).toArray()) as Logs[];
+        if (!legacyLogs.length) return;
+        const migratedLogs = legacyLogs.map(
+          ({ time, size, messages, session }) => ({
+            time,
+            size,
+            messages,
+            session,
+          })
+        );
+        await tx.table(LOG_TABLE).bulkPut(migratedLogs);
+        await tx.table(LEGACY_LOG_TABLE).clear();
+      });
+    this._table = db.table(LOG_TABLE);
+    await db.open();
   }
 
   protected _data: Logs = {
@@ -196,7 +285,7 @@ export class StorageTransport implements ITransport {
     return this._options.batchTimeout ?? DEFAULT_BATCH_TIMEOUT;
   }
 
-  protected _timeout: NodeJS.Timeout | null = null;
+  protected _timeout: ReturnType<typeof setTimeout> | null = null;
 
   write({ payload }: SerializedMessage) {
     if (this._options.enabled) {
@@ -204,10 +293,10 @@ export class StorageTransport implements ITransport {
       this._data.size += message.length;
       this._data.messages.push(message);
       if (this._data.size > this.batchSize) {
-        this._saveDB();
+        this._runInBackground(this._saveDB());
       } else if (!this._timeout) {
         this._timeout = setTimeout(() => {
-          this._saveDB();
+          this._runInBackground(this._saveDB());
         }, this.batchTimeout);
       }
     }
@@ -228,11 +317,12 @@ export class StorageTransport implements ITransport {
    * save memory logs to database and prune logs
    */
   async saveDB() {
-    await this._saveDB();
+    await this._saveDB(true);
+    await this._flushSavingLogs(true);
     await this._pruneLogs();
   }
 
-  protected _saveDB() {
+  protected _saveDB(throwOnError = false) {
     clearTimeout(this._timeout!);
     this._timeout = null;
     const data = this._data;
@@ -243,48 +333,91 @@ export class StorageTransport implements ITransport {
       session: this._session!,
     };
     if (!data.messages.length) return;
-    return this._saveLogs(data);
+    return this._saveLogs(data, throwOnError);
   }
 
   /**
    * saving logs promise
    */
-  savingLogsPromise?: Promise<void>;
+  savingLogsPromise: Promise<void> = Promise.resolve();
 
   protected _savingLogs = new Set<Logs>();
 
-  protected async _checkTimeKey(time: number): Promise<number> {
-    const count = await this._table?.where('time').equals(time).count();
-    if (count) {
-      return this._checkTimeKey(time + 1);
+  protected _saveLogs(data: Logs, throwOnError = false) {
+    this._savingLogs.add(data);
+    const saveOperation = this.savingLogsPromise.then(async () => {
+      await this._table?.add(data);
+      this._savingLogs.delete(data);
+    });
+    this.savingLogsPromise = saveOperation.catch(() => undefined);
+    if (throwOnError) {
+      return saveOperation;
     }
-    return time;
+    return saveOperation.catch((error) => {
+      this._reportBackgroundError(error, 'persist');
+    });
   }
 
-  protected async _saveLogs(data: Logs) {
-    this._savingLogs.add(data);
-    data.time = await this._checkTimeKey(data.time);
-    const savingLogsPromise = this._table?.add(data).then(() => {
-      this._savingLogs.delete(data);
-      if (this.savingLogsPromise === savingLogsPromise) {
-        this.savingLogsPromise = undefined;
+  protected _flushSavingLogs(throwOnError = false) {
+    const flushOperation = this.savingLogsPromise.then(async () => {
+      const pendingLogs = Array.from(this._savingLogs);
+      for (const data of pendingLogs) {
+        await this._saveLogs(data, true);
       }
     });
-    if (this.savingLogsPromise) {
-      const _saveLogsPromise = this.savingLogsPromise;
-      const nextSaveLogsPromise = Promise.all([
-        savingLogsPromise,
-        _saveLogsPromise,
-      ]).then(() => {
-        if (this.savingLogsPromise === nextSaveLogsPromise) {
-          this.savingLogsPromise = undefined;
-        }
-      });
-      this.savingLogsPromise = nextSaveLogsPromise;
-      return nextSaveLogsPromise;
+    if (throwOnError) {
+      return flushOperation;
     }
-    this.savingLogsPromise = savingLogsPromise;
-    return savingLogsPromise;
+    return flushOperation.catch((error) => {
+      this._reportBackgroundError(error, 'persist');
+    });
+  }
+
+  protected _runInBackground(
+    task?: Promise<unknown>,
+    phase: StorageTransportBackgroundError['phase'] = 'persist',
+    tempStorageKey?: string
+  ) {
+    void task?.catch((error) => {
+      this._reportBackgroundError(error, phase, tempStorageKey);
+    });
+  }
+
+  // Background storage tasks must never surface as application-level rejections,
+  // but they must remain observable for diagnostics.
+  protected _reportBackgroundError(
+    error: unknown,
+    phase: StorageTransportBackgroundError['phase'] = 'persist',
+    tempStorageKey?: string
+  ) {
+    const event = {
+      error,
+      phase,
+      transportName: this.name,
+      session: this._session,
+      instanceId: this._instanceId,
+      tempStorageKey,
+    };
+    try {
+      this._options.onBackgroundError?.(event);
+    } catch {
+      //
+    }
+    try {
+      if (
+        typeof global.dispatchEvent === 'function' &&
+        typeof CustomEvent === 'function'
+      ) {
+        global.dispatchEvent(
+          new CustomEvent(STORAGE_TRANSPORT_ERROR_EVENT, {
+            detail: event,
+          })
+        );
+      }
+    } catch {
+      //
+    }
+    return event;
   }
 
   get expiredTime() {
@@ -480,7 +613,8 @@ export class StorageTransport implements ITransport {
   } = {}) {
     try {
       // save current logs in memory
-      await this._saveDB();
+      await this._saveDB(true);
+      await this._flushSavingLogs(true);
       const data = await this.getLogs({ name, recentTime, extraLogs });
       if (data) {
         await saveAs(data.content, `${data.name}.zip`);

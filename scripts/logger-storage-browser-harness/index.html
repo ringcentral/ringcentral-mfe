@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MFE Logger Verification</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+        background:
+          radial-gradient(circle at top right, rgba(255, 197, 120, 0.38), transparent 35%),
+          linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+        color: #162033;
+      }
+
+      body {
+        margin: 0;
+        padding: 32px;
+      }
+
+      main {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: 30px;
+      }
+
+      p {
+        margin: 0 0 24px;
+        max-width: 72ch;
+        line-height: 1.5;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        font-weight: 700;
+        background: #e8eefb;
+        color: #1947b7;
+        margin-bottom: 24px;
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      }
+
+      .card {
+        border: 1px solid rgba(22, 32, 51, 0.12);
+        border-radius: 20px;
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.86);
+        box-shadow: 0 18px 50px rgba(22, 32, 51, 0.08);
+      }
+
+      .card h2 {
+        margin: 0 0 12px;
+        font-size: 18px;
+      }
+
+      .badge {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .badge.pass {
+        background: #dff6df;
+        color: #176c1c;
+      }
+
+      .badge.fail {
+        background: #fde4e2;
+        color: #ac2f2a;
+      }
+
+      pre {
+        margin: 16px 0 0;
+        padding: 16px;
+        overflow: auto;
+        border-radius: 14px;
+        background: #0f1726;
+        color: #dbeafe;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="status" id="status">Running checks...</div>
+      <h1>MFE Logger Browser Verification</h1>
+      <p>
+        This page compares published <code>0.4.19</code> with the current local
+        package from the repo. It verifies the original storage collision bug and
+        also probes the current implementation for high-contention limits.
+      </p>
+      <section class="grid" id="results"></section>
+    </main>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>
