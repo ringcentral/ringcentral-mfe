@@ -1,12 +1,15 @@
 jest.mock('dexie', () => {
   class DexieMock {
-    static errnames = {
-      Constraint: 'ConstraintError',
-    };
-
     version() {
+      const dexie = this;
       return {
-        stores: () => this,
+        stores() {
+          return {
+            upgrade() {
+              return dexie;
+            },
+          };
+        },
       };
     }
 
@@ -28,7 +31,11 @@ jest.mock('file-saver', () => ({
 
 import { saveAs } from 'file-saver';
 
-import { StorageTransport } from '../src/transports/storage';
+import {
+  STORAGE_TRANSPORT_ERROR_EVENT,
+  StorageTransport,
+  type StorageTransportBackgroundError,
+} from '../src/transports/storage';
 
 type Logs = {
   time: number;
@@ -38,7 +45,7 @@ type Logs = {
 };
 
 class TestStorageTransport extends StorageTransport {
-  protected _reportedErrors: unknown[] = [];
+  protected _reportedErrors: StorageTransportBackgroundError[] = [];
 
   setTable(table: { add: (data: Logs) => Promise<void> }) {
     this._table = table as any;
@@ -84,9 +91,14 @@ class TestStorageTransport extends StorageTransport {
     return this._tempKeyPrefix;
   }
 
-  protected _reportBackgroundError(error: unknown) {
-    this._reportedErrors.push(error);
-    return undefined;
+  protected _reportBackgroundError(
+    error: unknown,
+    phase: StorageTransportBackgroundError['phase'] = 'persist',
+    tempStorageKey?: string
+  ) {
+    const event = super._reportBackgroundError(error, phase, tempStorageKey);
+    this._reportedErrors.push(event);
+    return event;
   }
 }
 
@@ -124,27 +136,24 @@ describe('StorageTransport', () => {
     window.localStorage.clear();
   });
 
-  test('retries on IndexedDB key collisions until the insert succeeds', async () => {
-    const insertTimes: number[] = [];
-    const collision = Object.assign(new Error('duplicate key'), {
-      name: 'ConstraintError',
-    });
+  test('allows multiple writes with the same time value', async () => {
     const transport = new TestStorageTransport();
+    const add = jest.fn(async () => undefined);
 
     transport.setTable({
-      add: jest.fn(async (data: Logs) => {
-        insertTimes.push(data.time);
-        if (insertTimes.length < 3) {
-          throw collision;
-        }
-      }),
+      add,
     });
 
-    const data = createLogs(100);
-    await transport.persistLogs(data, true);
+    const firstLogs = createLogs(100);
+    const secondLogs = createLogs(100);
+    await Promise.all([
+      transport.persistLogs(firstLogs, true),
+      transport.persistLogs(secondLogs, true),
+    ]);
 
-    expect(insertTimes).toEqual([100, 101, 102]);
-    expect(data.time).toBe(102);
+    expect(add).toHaveBeenCalledTimes(2);
+    expect(add).toHaveBeenNthCalledWith(1, firstLogs);
+    expect(add).toHaveBeenNthCalledWith(2, secondLogs);
     expect(transport.savingLogsSize).toBe(0);
     expect(transport.reportedErrors).toEqual([]);
   });
@@ -192,8 +201,58 @@ describe('StorageTransport', () => {
     await jest.advanceTimersByTimeAsync(10);
     await flushPromises();
 
-    expect(transport.reportedErrors).toEqual([error]);
+    expect(transport.reportedErrors).toHaveLength(1);
+    expect(transport.reportedErrors[0]).toMatchObject({
+      error,
+      phase: 'persist',
+      transportName: transport.name,
+    });
     expect(transport.savingLogsSize).toBe(1);
+  });
+
+  test('emits callback and custom event for background errors', async () => {
+    jest.useFakeTimers();
+    const error = new Error('save failed');
+    const onBackgroundError = jest.fn();
+    const eventHandler = jest.fn();
+    const transport = new TestStorageTransport({
+      batchTimeout: 10,
+      enabled: true,
+      onBackgroundError,
+    });
+
+    window.addEventListener(STORAGE_TRANSPORT_ERROR_EVENT, eventHandler as EventListener);
+    transport.setTable({
+      add: jest.fn(async () => {
+        throw error;
+      }),
+    });
+
+    transport.write(createSerializedMessage(1));
+    await jest.advanceTimersByTimeAsync(10);
+    await flushPromises();
+
+    expect(onBackgroundError).toHaveBeenCalledTimes(1);
+    expect(onBackgroundError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error,
+        phase: 'persist',
+        transportName: transport.name,
+      })
+    );
+    expect(eventHandler).toHaveBeenCalledTimes(1);
+    expect(eventHandler.mock.calls[0][0].detail).toEqual(
+      expect.objectContaining({
+        error,
+        phase: 'persist',
+        transportName: transport.name,
+      })
+    );
+
+    window.removeEventListener(
+      STORAGE_TRANSPORT_ERROR_EVENT,
+      eventHandler as EventListener
+    );
   });
 
   test('still rejects explicit save requests when persistence fails', async () => {
@@ -324,6 +383,33 @@ describe('StorageTransport', () => {
     expect(
       window.localStorage.getItem(`${transport.tempKeyPrefix}:other-instance`)
     ).toBeNull();
+  });
+
+  test('keeps remaining temp logs until restore writes succeed', async () => {
+    const transport = new TestStorageTransport();
+    const restoreKey = `${transport.tempKeyPrefix}:other-instance`;
+    const firstLogs = createLogs(10);
+    const secondLogs = createLogs(20);
+    const error = new Error('save failed');
+    const add = jest
+      .fn<Promise<void>, [Logs]>()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(error);
+
+    transport.setTable({ add });
+    window.localStorage.setItem(
+      restoreKey,
+      JSON.stringify([firstLogs, secondLogs])
+    );
+
+    transport.restoreTempLogs();
+    await transport.waitForPendingSaves();
+    await flushPromises();
+
+    expect(add).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(window.localStorage.getItem(restoreKey)!)).toEqual([
+      secondLogs,
+    ]);
   });
 
   test('rejects download when flushing current logs fails', async () => {

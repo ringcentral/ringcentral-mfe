@@ -18,9 +18,23 @@ const DEFAULT_MAX_LOGS_SIZE = 1024 * 1024 * 100; // 100MB
 const DEFAULT_BATCH_TIMEOUT = 1000 * 60 * 5; // 5 minutes
 const DEFAULT_EXPIRED_TIME = 1000 * 60 * 60 * 24; // 1 day
 const DEFAULT_RECENT_TIME = 1000 * 60 * 60; // 1 hour
-const MAX_TIME_COLLISION_RETRIES = 32;
+const LEGACY_LOG_TABLE = 'logs';
+const LOG_TABLE = 'logs_v2';
+const CURRENT_DB_VERSION = 2;
+
+export const STORAGE_TRANSPORT_ERROR_EVENT = 'rc-mfe-storage-error';
+
+export type StorageTransportBackgroundError = {
+  error: unknown;
+  phase: 'init' | 'persist' | 'prune' | 'restore' | 'restore-parse';
+  transportName: string;
+  session?: string;
+  instanceId: string;
+  tempStorageKey?: string;
+};
 
 interface Logs {
+  id?: number;
   /**
    * time of the first log in batched logs
    */
@@ -76,6 +90,10 @@ interface StorageTransportOptions {
    * recent time for getting logs, default 1 hour
    */
   recentTime?: number;
+  /**
+   * receive non-throwing background transport errors
+   */
+  onBackgroundError?: (event: StorageTransportBackgroundError) => void;
 }
 
 export type ExtraLogs = {
@@ -109,7 +127,7 @@ export class StorageTransport implements ITransport {
     this._data.session = session;
     // TODO: refactor this with teardown
     if (this._options.enabled) {
-      this._runInBackground(this._initDB());
+      this._runInBackground(this._initDB(), 'init');
       this._onUnload();
       if (global.localStorage) {
         const key = this._pruneKey;
@@ -119,7 +137,8 @@ export class StorageTransport implements ITransport {
             this._runInBackground(
               this._pruneLogs().then(() => {
                 global.localStorage.setItem(key, new Date().toLocaleDateString());
-              })
+              }),
+              'prune'
             );
             // Avoid running during peak startup load.
             // 5 seconds later
@@ -127,7 +146,7 @@ export class StorageTransport implements ITransport {
         }
       }
       setInterval(() => {
-        this._runInBackground(this._pruneLogs());
+        this._runInBackground(this._pruneLogs(), 'prune');
       }, this.expiredTime);
     }
   }
@@ -193,14 +212,25 @@ export class StorageTransport implements ITransport {
       if (!tempLogs) return;
       try {
         const logs = JSON.parse(tempLogs) as Logs[];
-        global.localStorage.removeItem(key);
-        logs.forEach((data) => {
-          this._runInBackground(this._saveLogs(data));
-        });
+        this._runInBackground(this._restoreTempKey(key, logs), 'restore', key);
       } catch (error) {
-        this._reportBackgroundError(error);
+        this._reportBackgroundError(error, 'restore-parse', key);
       }
     });
+  }
+
+  protected async _restoreTempKey(key: string, logs: Logs[]) {
+    const pendingLogs = [...logs];
+    while (pendingLogs.length) {
+      const data = pendingLogs[0];
+      await this._saveLogs(data, true);
+      pendingLogs.shift();
+      if (pendingLogs.length) {
+        global.localStorage.setItem(key, stringify(pendingLogs));
+      } else {
+        global.localStorage.removeItem(key);
+      }
+    }
   }
 
   get options() {
@@ -213,10 +243,31 @@ export class StorageTransport implements ITransport {
 
   protected async _initDB() {
     const db = new Dexie(this.name);
-    db.version(this._options.version ?? 1).stores({
-      logs: '&time, size',
+    db.version(1).stores({
+      [LEGACY_LOG_TABLE]: '&time, size',
     });
-    this._table = db.table('logs');
+    db.version(
+      Math.max(this._options.version ?? CURRENT_DB_VERSION, CURRENT_DB_VERSION)
+    )
+      .stores({
+        [LEGACY_LOG_TABLE]: '&time, size',
+        [LOG_TABLE]: '++id, time, size',
+      })
+      .upgrade(async (tx) => {
+        const legacyLogs = (await tx.table(LEGACY_LOG_TABLE).toArray()) as Logs[];
+        if (!legacyLogs.length) return;
+        const migratedLogs = legacyLogs.map(
+          ({ time, size, messages, session }) => ({
+            time,
+            size,
+            messages,
+            session,
+          })
+        );
+        await tx.table(LOG_TABLE).bulkPut(migratedLogs);
+        await tx.table(LEGACY_LOG_TABLE).clear();
+      });
+    this._table = db.table(LOG_TABLE);
     await db.open();
   }
 
@@ -292,30 +343,10 @@ export class StorageTransport implements ITransport {
 
   protected _savingLogs = new Set<Logs>();
 
-  protected _isConstraintError(error: unknown) {
-    return error instanceof Error && error.name === Dexie.errnames.Constraint;
-  }
-
-  protected async _addLogs(data: Logs, retryCount = 0): Promise<void> {
-    try {
-      await this._table?.add(data);
-    } catch (error) {
-      if (
-        this._isConstraintError(error) &&
-        retryCount < MAX_TIME_COLLISION_RETRIES
-      ) {
-        data.time += 1;
-        await this._addLogs(data, retryCount + 1);
-        return;
-      }
-      throw error;
-    }
-  }
-
   protected _saveLogs(data: Logs, throwOnError = false) {
     this._savingLogs.add(data);
     const saveOperation = this.savingLogsPromise.then(async () => {
-      await this._addLogs(data);
+      await this._table?.add(data);
       this._savingLogs.delete(data);
     });
     this.savingLogsPromise = saveOperation.catch(() => undefined);
@@ -323,7 +354,7 @@ export class StorageTransport implements ITransport {
       return saveOperation;
     }
     return saveOperation.catch((error) => {
-      this._reportBackgroundError(error);
+      this._reportBackgroundError(error, 'persist');
     });
   }
 
@@ -338,19 +369,55 @@ export class StorageTransport implements ITransport {
       return flushOperation;
     }
     return flushOperation.catch((error) => {
-      this._reportBackgroundError(error);
+      this._reportBackgroundError(error, 'persist');
     });
   }
 
-  protected _runInBackground(task?: Promise<unknown>) {
+  protected _runInBackground(
+    task?: Promise<unknown>,
+    phase: StorageTransportBackgroundError['phase'] = 'persist',
+    tempStorageKey?: string
+  ) {
     void task?.catch((error) => {
-      this._reportBackgroundError(error);
+      this._reportBackgroundError(error, phase, tempStorageKey);
     });
   }
 
-  // Background storage tasks must never surface as application-level errors.
-  protected _reportBackgroundError(_error: unknown) {
-    return undefined;
+  // Background storage tasks must never surface as application-level rejections,
+  // but they must remain observable for diagnostics.
+  protected _reportBackgroundError(
+    error: unknown,
+    phase: StorageTransportBackgroundError['phase'] = 'persist',
+    tempStorageKey?: string
+  ) {
+    const event = {
+      error,
+      phase,
+      transportName: this.name,
+      session: this._session,
+      instanceId: this._instanceId,
+      tempStorageKey,
+    };
+    try {
+      this._options.onBackgroundError?.(event);
+    } catch {
+      //
+    }
+    try {
+      if (
+        typeof global.dispatchEvent === 'function' &&
+        typeof CustomEvent === 'function'
+      ) {
+        global.dispatchEvent(
+          new CustomEvent(STORAGE_TRANSPORT_ERROR_EVENT, {
+            detail: event,
+          })
+        );
+      }
+    } catch {
+      //
+    }
+    return event;
   }
 
   get expiredTime() {
