@@ -18,6 +18,7 @@ const DEFAULT_MAX_LOGS_SIZE = 1024 * 1024 * 100; // 100MB
 const DEFAULT_BATCH_TIMEOUT = 1000 * 60 * 5; // 5 minutes
 const DEFAULT_EXPIRED_TIME = 1000 * 60 * 60 * 24; // 1 day
 const DEFAULT_RECENT_TIME = 1000 * 60 * 60; // 1 hour
+const MAX_TIME_COLLISION_RETRIES = 32;
 
 interface Logs {
   /**
@@ -104,24 +105,25 @@ export class StorageTransport implements ITransport {
     this._data.session = session;
     // TODO: refactor this with teardown
     if (this._options.enabled) {
-      this._initDB().catch((err) => {
-        console.error('StorageTransport.initDB:', err);
-      });
+      this._runInBackground(this._initDB());
       this._onUnload();
       if (global.localStorage) {
         const key = `${this._tempKey}-prune-time`;
         const PrunedTime = global.localStorage.getItem(key);
         if (PrunedTime !== new Date().toLocaleDateString()) {
           setTimeout(() => {
-            this._pruneLogs();
-            global.localStorage.setItem(key, new Date().toLocaleDateString());
+            this._runInBackground(
+              this._pruneLogs().then(() => {
+                global.localStorage.setItem(key, new Date().toLocaleDateString());
+              })
+            );
             // Avoid running during peak startup load.
             // 5 seconds later
           }, 5 * 1000);
         }
       }
       setInterval(() => {
-        this._pruneLogs();
+        this._runInBackground(this._pruneLogs());
       }, this.expiredTime);
     }
   }
@@ -133,7 +135,7 @@ export class StorageTransport implements ITransport {
         global.localStorage.removeItem(this._tempKey);
         const logs = JSON.parse(tempLogs) as Logs[];
         logs.forEach((data) => {
-          this._saveLogs(data);
+          this._runInBackground(this._saveLogs(data));
         });
       }
       window.addEventListener('beforeunload', () => {
@@ -156,6 +158,8 @@ export class StorageTransport implements ITransport {
     }
     if (saveData.length) {
       global.localStorage.setItem(this._tempKey, stringify(saveData));
+    } else {
+      global.localStorage.removeItem(this._tempKey);
     }
   }
 
@@ -177,9 +181,7 @@ export class StorageTransport implements ITransport {
       logs: '&time, size',
     });
     this._table = db.table('logs');
-    db.open().catch((err) => {
-      console.error(`StorageTransport.initDB:`, err);
-    });
+    await db.open();
   }
 
   protected _data: Logs = {
@@ -196,7 +198,7 @@ export class StorageTransport implements ITransport {
     return this._options.batchTimeout ?? DEFAULT_BATCH_TIMEOUT;
   }
 
-  protected _timeout: NodeJS.Timeout | null = null;
+  protected _timeout: ReturnType<typeof setTimeout> | null = null;
 
   write({ payload }: SerializedMessage) {
     if (this._options.enabled) {
@@ -204,10 +206,10 @@ export class StorageTransport implements ITransport {
       this._data.size += message.length;
       this._data.messages.push(message);
       if (this._data.size > this.batchSize) {
-        this._saveDB();
+        this._runInBackground(this._saveDB());
       } else if (!this._timeout) {
         this._timeout = setTimeout(() => {
-          this._saveDB();
+          this._runInBackground(this._saveDB());
         }, this.batchTimeout);
       }
     }
@@ -228,11 +230,11 @@ export class StorageTransport implements ITransport {
    * save memory logs to database and prune logs
    */
   async saveDB() {
-    await this._saveDB();
+    await this._saveDB(true);
     await this._pruneLogs();
   }
 
-  protected _saveDB() {
+  protected _saveDB(throwOnError = false) {
     clearTimeout(this._timeout!);
     this._timeout = null;
     const data = this._data;
@@ -243,48 +245,63 @@ export class StorageTransport implements ITransport {
       session: this._session!,
     };
     if (!data.messages.length) return;
-    return this._saveLogs(data);
+    return this._saveLogs(data, throwOnError);
   }
 
   /**
    * saving logs promise
    */
-  savingLogsPromise?: Promise<void>;
+  savingLogsPromise: Promise<void> = Promise.resolve();
 
   protected _savingLogs = new Set<Logs>();
 
-  protected async _checkTimeKey(time: number): Promise<number> {
-    const count = await this._table?.where('time').equals(time).count();
-    if (count) {
-      return this._checkTimeKey(time + 1);
-    }
-    return time;
+  protected _isConstraintError(error: unknown) {
+    return error instanceof Error && error.name === Dexie.errnames.Constraint;
   }
 
-  protected async _saveLogs(data: Logs) {
-    this._savingLogs.add(data);
-    data.time = await this._checkTimeKey(data.time);
-    const savingLogsPromise = this._table?.add(data).then(() => {
-      this._savingLogs.delete(data);
-      if (this.savingLogsPromise === savingLogsPromise) {
-        this.savingLogsPromise = undefined;
+  protected async _addLogs(data: Logs, retryCount = 0): Promise<void> {
+    try {
+      await this._table?.add(data);
+    } catch (error) {
+      if (
+        this._isConstraintError(error) &&
+        retryCount < MAX_TIME_COLLISION_RETRIES
+      ) {
+        data.time += 1;
+        await this._addLogs(data, retryCount + 1);
+        return;
+      }
+      throw error;
+    }
+  }
+
+  protected _saveLogs(data: Logs, throwOnError = false) {
+    const saveOperation = this.savingLogsPromise.then(async () => {
+      this._savingLogs.add(data);
+      try {
+        await this._addLogs(data);
+      } finally {
+        this._savingLogs.delete(data);
       }
     });
-    if (this.savingLogsPromise) {
-      const _saveLogsPromise = this.savingLogsPromise;
-      const nextSaveLogsPromise = Promise.all([
-        savingLogsPromise,
-        _saveLogsPromise,
-      ]).then(() => {
-        if (this.savingLogsPromise === nextSaveLogsPromise) {
-          this.savingLogsPromise = undefined;
-        }
-      });
-      this.savingLogsPromise = nextSaveLogsPromise;
-      return nextSaveLogsPromise;
+    this.savingLogsPromise = saveOperation.catch(() => undefined);
+    if (throwOnError) {
+      return saveOperation;
     }
-    this.savingLogsPromise = savingLogsPromise;
-    return savingLogsPromise;
+    return saveOperation.catch((error) => {
+      this._reportBackgroundError(error);
+    });
+  }
+
+  protected _runInBackground(task?: Promise<unknown>) {
+    void task?.catch((error) => {
+      this._reportBackgroundError(error);
+    });
+  }
+
+  // Background storage tasks must never surface as application-level errors.
+  protected _reportBackgroundError(_error: unknown) {
+    return undefined;
   }
 
   get expiredTime() {
