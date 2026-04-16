@@ -98,6 +98,10 @@ export class StorageTransport implements ITransport {
 
   protected _session?: string;
 
+  protected _instanceId = `${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 10)}`;
+
   constructor(protected _options: StorageTransportOptions = {}) {}
 
   async init({ session }: TransportInitOptions) {
@@ -108,7 +112,7 @@ export class StorageTransport implements ITransport {
       this._runInBackground(this._initDB());
       this._onUnload();
       if (global.localStorage) {
-        const key = `${this._tempKey}-prune-time`;
+        const key = this._pruneKey;
         const PrunedTime = global.localStorage.getItem(key);
         if (PrunedTime !== new Date().toLocaleDateString()) {
           setTimeout(() => {
@@ -130,14 +134,7 @@ export class StorageTransport implements ITransport {
 
   protected _onUnload() {
     if (global.localStorage) {
-      const tempLogs = global.localStorage.getItem(this._tempKey);
-      if (tempLogs) {
-        global.localStorage.removeItem(this._tempKey);
-        const logs = JSON.parse(tempLogs) as Logs[];
-        logs.forEach((data) => {
-          this._runInBackground(this._saveLogs(data));
-        });
-      }
+      this._restoreTempLogs();
       window.addEventListener('beforeunload', () => {
         this._saveTemp();
       });
@@ -163,8 +160,47 @@ export class StorageTransport implements ITransport {
     }
   }
 
-  protected get _tempKey() {
+  protected get _tempKeyPrefix() {
     return `${this.name}-temp`;
+  }
+
+  protected get _tempKey() {
+    return `${this._tempKeyPrefix}:${this._instanceId}`;
+  }
+
+  protected get _pruneKey() {
+    return `${this.name}-prune-time`;
+  }
+
+  protected _getTempKeys() {
+    if (!global.localStorage) return [];
+    const keys: string[] = [];
+    for (let index = 0; index < global.localStorage.length; index += 1) {
+      const key = global.localStorage.key(index);
+      if (
+        key === this._tempKeyPrefix ||
+        key?.startsWith(`${this._tempKeyPrefix}:`)
+      ) {
+        keys.push(key);
+      }
+    }
+    return keys;
+  }
+
+  protected _restoreTempLogs() {
+    this._getTempKeys().forEach((key) => {
+      const tempLogs = global.localStorage.getItem(key);
+      if (!tempLogs) return;
+      try {
+        const logs = JSON.parse(tempLogs) as Logs[];
+        global.localStorage.removeItem(key);
+        logs.forEach((data) => {
+          this._runInBackground(this._saveLogs(data));
+        });
+      } catch (error) {
+        this._reportBackgroundError(error);
+      }
+    });
   }
 
   get options() {
@@ -280,8 +316,9 @@ export class StorageTransport implements ITransport {
       this._savingLogs.add(data);
       try {
         await this._addLogs(data);
-      } finally {
         this._savingLogs.delete(data);
+      } catch (error) {
+        throw error;
       }
     });
     this.savingLogsPromise = saveOperation.catch(() => undefined);

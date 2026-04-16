@@ -50,12 +50,32 @@ class TestStorageTransport extends StorageTransport {
     return this._saveDB(throwOnError);
   }
 
+  async waitForPendingSaves() {
+    await this.savingLogsPromise;
+  }
+
+  saveTempLogs() {
+    this._saveTemp();
+  }
+
+  restoreTempLogs() {
+    this._restoreTempLogs();
+  }
+
   get savingLogsSize() {
     return this._savingLogs.size;
   }
 
   get reportedErrors() {
     return this._reportedErrors;
+  }
+
+  get tempKey() {
+    return this._tempKey;
+  }
+
+  get tempKeyPrefix() {
+    return this._tempKeyPrefix;
   }
 
   protected _reportBackgroundError(error: unknown) {
@@ -93,6 +113,7 @@ const flushPromises = async () => {
 describe('StorageTransport', () => {
   afterEach(() => {
     jest.useRealTimers();
+    window.localStorage.clear();
   });
 
   test('retries on IndexedDB key collisions until the insert succeeds', async () => {
@@ -164,7 +185,7 @@ describe('StorageTransport', () => {
     await flushPromises();
 
     expect(transport.reportedErrors).toEqual([error]);
-    expect(transport.savingLogsSize).toBe(0);
+    expect(transport.savingLogsSize).toBe(1);
   });
 
   test('still rejects explicit save requests when persistence fails', async () => {
@@ -181,6 +202,66 @@ describe('StorageTransport', () => {
       'save failed'
     );
     expect(transport.reportedErrors).toEqual([]);
-    expect(transport.savingLogsSize).toBe(0);
+    expect(transport.savingLogsSize).toBe(1);
+  });
+
+  test('persists failed in-flight batches to temp storage for recovery', async () => {
+    const error = new Error('save failed');
+    const transport = new TestStorageTransport();
+
+    transport.setTable({
+      add: jest.fn(async () => {
+        throw error;
+      }),
+    });
+
+    await expect(transport.persistLogs(createLogs(42), true)).rejects.toThrow(
+      'save failed'
+    );
+
+    transport.saveTempLogs();
+
+    const saved = window.localStorage.getItem(transport.tempKey);
+    expect(saved).not.toBeNull();
+    expect(JSON.parse(saved!)).toEqual([createLogs(42)]);
+  });
+
+  test('does not remove another instance temp storage when current instance has no logs', () => {
+    const writer = new TestStorageTransport();
+    const idle = new TestStorageTransport();
+
+    window.localStorage.setItem(writer.tempKey, JSON.stringify([createLogs(7)]));
+
+    idle.saveTempLogs();
+
+    expect(window.localStorage.getItem(writer.tempKey)).toBe(
+      JSON.stringify([createLogs(7)])
+    );
+  });
+
+  test('restores legacy and instance-scoped temp logs', async () => {
+    const transport = new TestStorageTransport();
+    const add = jest.fn(async () => undefined);
+    transport.setTable({ add });
+
+    const legacyLogs = [createLogs(10)];
+    const scopedLogs = [createLogs(20)];
+    window.localStorage.setItem(
+      transport.tempKeyPrefix,
+      JSON.stringify(legacyLogs)
+    );
+    window.localStorage.setItem(
+      `${transport.tempKeyPrefix}:other-instance`,
+      JSON.stringify(scopedLogs)
+    );
+
+    transport.restoreTempLogs();
+    await transport.waitForPendingSaves();
+
+    expect(add).toHaveBeenCalledTimes(2);
+    expect(window.localStorage.getItem(transport.tempKeyPrefix)).toBeNull();
+    expect(
+      window.localStorage.getItem(`${transport.tempKeyPrefix}:other-instance`)
+    ).toBeNull();
   });
 });
