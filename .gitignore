@@ -109,3 +109,5 @@ packages/**/dist/
 dist/
 jest-html-report
 .idea/
+
+.playwright-mcp/

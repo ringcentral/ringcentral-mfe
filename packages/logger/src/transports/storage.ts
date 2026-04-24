@@ -136,7 +136,10 @@ export class StorageTransport implements ITransport {
           setTimeout(() => {
             this._runInBackground(
               this._pruneLogs().then(() => {
-                global.localStorage.setItem(key, new Date().toLocaleDateString());
+                global.localStorage.setItem(
+                  key,
+                  new Date().toLocaleDateString()
+                );
               }),
               'prune'
             );
@@ -254,7 +257,9 @@ export class StorageTransport implements ITransport {
         [LOG_TABLE]: '++id, time, size',
       })
       .upgrade(async (tx) => {
-        const legacyLogs = (await tx.table(LEGACY_LOG_TABLE).toArray()) as Logs[];
+        const legacyLogs = (await tx
+          .table(LEGACY_LOG_TABLE)
+          .toArray()) as Logs[];
         if (!legacyLogs.length) return;
         const migratedLogs = legacyLogs.map(
           ({ time, size, messages, session }) => ({
