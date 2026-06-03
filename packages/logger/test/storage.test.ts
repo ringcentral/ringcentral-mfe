@@ -47,7 +47,7 @@ type Logs = {
 class TestStorageTransport extends StorageTransport {
   protected _reportedErrors: StorageTransportBackgroundError[] = [];
 
-  setTable(table: { add: (data: Logs) => Promise<void> }) {
+  setTable(table: any) {
     this._table = table as any;
   }
 
@@ -121,12 +121,41 @@ const createSerializedMessage = (time = 1) =>
       sequence: time,
       time,
     },
-  }) as any;
+  } as any);
 
 const flushPromises = async () => {
   await Promise.resolve();
   await Promise.resolve();
 };
+
+const createQueryTable = (logs: Logs[]) => ({
+  orderBy: jest.fn(() => ({
+    toArray: jest.fn(async () => logs),
+  })),
+  where: jest.fn(() => ({
+    above: jest.fn(() => ({
+      sortBy: jest.fn(async () => logs),
+    })),
+  })),
+});
+
+const getZipEntryNames = (zip: { files: Record<string, unknown> }) =>
+  Object.keys(zip.files);
+
+const WINDOWS_RESERVED_PATH_SEGMENT =
+  /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i;
+const WINDOWS_TRAILING_DOTS_AND_SPACES = /[. ]+$/;
+
+const hasWindowsUnsafePathSegment = (path: string) =>
+  path
+    .split('/')
+    .filter(Boolean)
+    .some(
+      (segment) =>
+        /[\\:*?"<>|\x00-\x1f]/.test(segment) ||
+        WINDOWS_RESERVED_PATH_SEGMENT.test(segment) ||
+        WINDOWS_TRAILING_DOTS_AND_SPACES.test(segment)
+    );
 
 describe('StorageTransport', () => {
   afterEach(() => {
@@ -221,7 +250,10 @@ describe('StorageTransport', () => {
       onBackgroundError,
     });
 
-    window.addEventListener(STORAGE_TRANSPORT_ERROR_EVENT, eventHandler as EventListener);
+    window.addEventListener(
+      STORAGE_TRANSPORT_ERROR_EVENT,
+      eventHandler as EventListener
+    );
     transport.setTable({
       add: jest.fn(async () => {
         throw error;
@@ -350,7 +382,10 @@ describe('StorageTransport', () => {
     const writer = new TestStorageTransport();
     const idle = new TestStorageTransport();
 
-    window.localStorage.setItem(writer.tempKey, JSON.stringify([createLogs(7)]));
+    window.localStorage.setItem(
+      writer.tempKey,
+      JSON.stringify([createLogs(7)])
+    );
 
     idle.saveTempLogs();
 
@@ -453,5 +488,67 @@ describe('StorageTransport', () => {
     expect(getLogs).toHaveBeenCalledTimes(1);
     expect(saveAs).toHaveBeenCalledWith(content, 'logs.zip');
     expect(transport.savingLogsSize).toBe(0);
+  });
+
+  test('uses Windows-safe paths when exporting logs', async () => {
+    const transport = new TestStorageTransport();
+    const logs = [
+      {
+        ...createLogs(Date.parse('2026-05-27T02:03:20.036Z')),
+        messages: ['session one'],
+        session: '2026-05-27T02:03:20.036Z',
+      },
+      {
+        ...createLogs(Date.parse('2026-05-27T02:04:20.036Z')),
+        messages: ['session two'],
+        session: '2026-05-27T02?03?20.036Z',
+      },
+      {
+        ...createLogs(Date.parse('2026-05-27T02:05:20.036Z')),
+        messages: ['session three'],
+        session: 'CON',
+      },
+      {
+        ...createLogs(Date.parse('2026-05-27T02:06:20.036Z')),
+        messages: ['session four'],
+        session: 'CON.tar.gz',
+      },
+    ];
+
+    transport.setTable(createQueryTable(logs));
+
+    const data = await transport.queryLogs({
+      name: 'rc-mfe:log',
+      recentTime: Number.POSITIVE_INFINITY,
+      extraLogs: [
+        {
+          fileName: 'extra:logs/report?.txt',
+          log: 'extra log one',
+        },
+        {
+          fileName: 'extra?logs/report*.txt',
+          log: 'extra log two',
+        },
+      ],
+    });
+
+    expect(data).toBeDefined();
+    expect(data!.name).toBe(
+      'rc-mfe-log_2026-05-27T02-03-20.036Z_2026-05-27T02-06-20.036Z'
+    );
+
+    const entryNames = getZipEntryNames(data!.zip);
+
+    expect(entryNames.some(hasWindowsUnsafePathSegment)).toBe(false);
+    expect(entryNames).toEqual(
+      expect.arrayContaining([
+        `${data!.name}/history/2026-05-27T02-03-20.036Z.log`,
+        `${data!.name}/history/2026-05-27T02-03-20.036Z-2.log`,
+        `${data!.name}/history/CON_.log`,
+        `${data!.name}/history/CON_.tar.gz.log`,
+        'extra-logs/report-.txt',
+        'extra-logs/report--2.txt',
+      ])
+    );
   });
 });

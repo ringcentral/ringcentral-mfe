@@ -21,8 +21,78 @@ const DEFAULT_RECENT_TIME = 1000 * 60 * 60; // 1 hour
 const LEGACY_LOG_TABLE = 'logs';
 const LOG_TABLE = 'logs_v2';
 const CURRENT_DB_VERSION = 2;
+const ZIP_PATH_SEPARATOR = '/';
+const WINDOWS_INVALID_FILE_NAME_CHARS = /[<>:"/\\|?*\x00-\x1f]/g;
+const WINDOWS_RESERVED_FILE_NAME =
+  /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/i;
+const WINDOWS_TRAILING_DOTS_AND_SPACES = /[. ]+$/;
+const ZIP_ENTRY_FALLBACK_NAME = 'log';
 
 export const STORAGE_TRANSPORT_ERROR_EVENT = 'rc-mfe-storage-error';
+
+function formatZipTimestamp(time: number) {
+  return new Date(time).toISOString().replace(/:/g, '-');
+}
+
+// Log archives are often extracted on Windows, so every zip path segment must
+// also be a valid Windows file name.
+function sanitizeZipFileName(fileName: string) {
+  const sanitizedName = fileName
+    .replace(WINDOWS_INVALID_FILE_NAME_CHARS, '-')
+    .replace(WINDOWS_TRAILING_DOTS_AND_SPACES, '');
+  const safeName = sanitizedName || ZIP_ENTRY_FALLBACK_NAME;
+
+  if (WINDOWS_RESERVED_FILE_NAME.test(safeName)) {
+    const extensionIndex = safeName.indexOf('.');
+    if (extensionIndex > 0) {
+      return `${safeName.slice(0, extensionIndex)}_${safeName.slice(
+        extensionIndex
+      )}`;
+    }
+
+    return `${safeName}_`;
+  }
+
+  return safeName;
+}
+
+// Keep zip folder separators while normalizing each path segment separately.
+function sanitizeZipPath(path: string) {
+  return path
+    .replace(/\\/g, ZIP_PATH_SEPARATOR)
+    .split(ZIP_PATH_SEPARATOR)
+    .map((segment) => {
+      if (!segment || segment === '.' || segment === '..') {
+        return ZIP_ENTRY_FALLBACK_NAME;
+      }
+
+      return sanitizeZipFileName(segment);
+    })
+    .join(ZIP_PATH_SEPARATOR);
+}
+
+// Different raw names can collapse to the same sanitized path, for example
+// ISO timestamps that only differ by ':' and '?' separators.
+function getUniqueZipPath(path: string, usedPaths: Set<string>) {
+  const segments = path.split(ZIP_PATH_SEPARATOR);
+  const fileName = segments.pop()!;
+  const extensionIndex = fileName.lastIndexOf('.');
+  const baseName =
+    extensionIndex > 0 ? fileName.slice(0, extensionIndex) : fileName;
+  const extension = extensionIndex > 0 ? fileName.slice(extensionIndex) : '';
+  let safePath = path;
+  let index = 2;
+
+  while (usedPaths.has(safePath.toLowerCase())) {
+    safePath = [...segments, `${baseName}-${index}${extension}`].join(
+      ZIP_PATH_SEPARATOR
+    );
+    index += 1;
+  }
+
+  usedPaths.add(safePath.toLowerCase());
+  return safePath;
+}
 
 export type StorageTransportBackgroundError = {
   error: unknown;
@@ -514,28 +584,38 @@ export class StorageTransport implements ITransport {
         .above(Date.now() - recentTime)
         .sortBy('time')) ?? [];
     if (!data.length) return;
-    const endTime = new Date(data[data.length - 1].time).toISOString();
-    const startTime = new Date(data[0].time).toISOString();
-    const name = `${_name}_${startTime}_${endTime}`;
+    const endTime = formatZipTimestamp(data[data.length - 1].time);
+    const startTime = formatZipTimestamp(data[0].time);
+    const name = sanitizeZipFileName(`${_name}_${startTime}_${endTime}`);
     const logs = data.map((item) => item.messages.join('\n')).join('\n');
     const zip = new JSZip();
     const logFolder = zip.folder(name)!;
     logFolder.file('recent.log', `${logs}\n`);
     const historyFolder = logFolder.folder('history')!;
+    const historyPaths = new Set<string>();
     for (const session of allSessions) {
       const _logs = allLogs
         .filter((log) => log.session === session)
         .map((item) => item.messages.join('\n'))
         .join('\n');
-      historyFolder.file(`${session}.log`, `${_logs}\n`);
+      const historyPath = getUniqueZipPath(
+        sanitizeZipFileName(`${session}.log`),
+        historyPaths
+      );
+      historyFolder.file(historyPath, `${_logs}\n`);
     }
+    const extraLogPaths = new Set<string>();
     for (const extraLog of extraLogs) {
+      const extraLogPath = getUniqueZipPath(
+        sanitizeZipPath(extraLog.fileName),
+        extraLogPaths
+      );
       // Append a newline for string logs to ensure proper text formatting.
       // Binary data is treated as raw data and does not require a newline.
       if (typeof extraLog.log === 'string') {
-        zip.file(extraLog.fileName, `${extraLog.log}\n`);
+        zip.file(extraLogPath, `${extraLog.log}\n`);
       } else {
-        zip.file(extraLog.fileName, extraLog.log);
+        zip.file(extraLogPath, extraLog.log);
       }
     }
     return {
