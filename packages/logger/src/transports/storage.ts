@@ -30,6 +30,10 @@ const ZIP_ENTRY_FALLBACK_NAME = 'log';
 
 export const STORAGE_TRANSPORT_ERROR_EVENT = 'rc-mfe-storage-error';
 
+function formatZipTimestamp(time: number) {
+  return new Date(time).toISOString().replace(/:/g, '-');
+}
+
 // Log archives are often extracted on Windows, so every zip path segment must
 // also be a valid Windows file name.
 function sanitizeZipFileName(fileName: string) {
@@ -580,8 +584,8 @@ export class StorageTransport implements ITransport {
         .above(Date.now() - recentTime)
         .sortBy('time')) ?? [];
     if (!data.length) return;
-    const endTime = new Date(data[data.length - 1].time).toISOString();
-    const startTime = new Date(data[0].time).toISOString();
+    const endTime = formatZipTimestamp(data[data.length - 1].time);
+    const startTime = formatZipTimestamp(data[0].time);
     const name = sanitizeZipFileName(`${_name}_${startTime}_${endTime}`);
     const logs = data.map((item) => item.messages.join('\n')).join('\n');
     const zip = new JSZip();
