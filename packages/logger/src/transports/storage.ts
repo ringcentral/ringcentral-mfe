@@ -43,7 +43,7 @@ function sanitizeZipFileName(fileName: string) {
   const safeName = sanitizedName || ZIP_ENTRY_FALLBACK_NAME;
 
   if (WINDOWS_RESERVED_FILE_NAME.test(safeName)) {
-    const extensionIndex = safeName.lastIndexOf('.');
+    const extensionIndex = safeName.indexOf('.');
     if (extensionIndex > 0) {
       return `${safeName.slice(0, extensionIndex)}_${safeName.slice(
         extensionIndex

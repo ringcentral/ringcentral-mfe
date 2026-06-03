@@ -142,11 +142,20 @@ const createQueryTable = (logs: Logs[]) => ({
 const getZipEntryNames = (zip: { files: Record<string, unknown> }) =>
   Object.keys(zip.files);
 
+const WINDOWS_RESERVED_PATH_SEGMENT =
+  /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i;
+const WINDOWS_TRAILING_DOTS_AND_SPACES = /[. ]+$/;
+
 const hasWindowsUnsafePathSegment = (path: string) =>
   path
     .split('/')
     .filter(Boolean)
-    .some((segment) => /[\\:*?"<>|]/.test(segment));
+    .some(
+      (segment) =>
+        /[\\:*?"<>|\x00-\x1f]/.test(segment) ||
+        WINDOWS_RESERVED_PATH_SEGMENT.test(segment) ||
+        WINDOWS_TRAILING_DOTS_AND_SPACES.test(segment)
+    );
 
 describe('StorageTransport', () => {
   afterEach(() => {
@@ -499,6 +508,11 @@ describe('StorageTransport', () => {
         messages: ['session three'],
         session: 'CON',
       },
+      {
+        ...createLogs(Date.parse('2026-05-27T02:06:20.036Z')),
+        messages: ['session four'],
+        session: 'CON.tar.gz',
+      },
     ];
 
     transport.setTable(createQueryTable(logs));
@@ -520,7 +534,7 @@ describe('StorageTransport', () => {
 
     expect(data).toBeDefined();
     expect(data!.name).toBe(
-      'rc-mfe-log_2026-05-27T02-03-20.036Z_2026-05-27T02-05-20.036Z'
+      'rc-mfe-log_2026-05-27T02-03-20.036Z_2026-05-27T02-06-20.036Z'
     );
 
     const entryNames = getZipEntryNames(data!.zip);
@@ -531,6 +545,7 @@ describe('StorageTransport', () => {
         `${data!.name}/history/2026-05-27T02-03-20.036Z.log`,
         `${data!.name}/history/2026-05-27T02-03-20.036Z-2.log`,
         `${data!.name}/history/CON_.log`,
+        `${data!.name}/history/CON_.tar.gz.log`,
         'extra-logs/report-.txt',
         'extra-logs/report--2.txt',
       ])
