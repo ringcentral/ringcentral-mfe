@@ -31,8 +31,9 @@
     "verify:logger:browser": "node ./scripts/verify-logger-storage-browser.mjs",
     "watch": "lerna run watch",
     "pre:publish": "lerna run pre:publish",
+    "pack:dry-run": "lerna exec --no-private --concurrency 1 -- npm pack --dry-run --json",
     "update:version": "lerna version --amend --no-git-tag-version",
-    "publish": "lerna exec --no-private --no-bail -- npm publish"
+    "publish": "lerna exec --no-private --concurrency 1 -- npm publish"
   },
   "config": {
     "commitizen": {

@@ -2,10 +2,11 @@ name: Node.js Package
 
 on:
   release:
-    types: [released, prereleased]
+    types: [published]
 
 jobs:
   publish-npm:
+    timeout-minutes: 20
     permissions:
       contents: read
       id-token: write
@@ -16,11 +17,15 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org/
+          package-manager-cache: false
+      - run: npm install -g npm@latest
+      - run: npm --version
       - run: corepack enable
-      - run: yarn
+      - run: yarn --frozen-lockfile
       - run: yarn build
       - run: yarn ci:test
       - run: yarn pre:publish
+      - run: yarn pack:dry-run
       - name: Decide npm dist-tag
         id: dist_tag
         run: |
