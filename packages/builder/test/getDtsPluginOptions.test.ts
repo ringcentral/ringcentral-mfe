@@ -190,9 +190,15 @@ test('getModuleFederationConfig strips dts from the native options', () => {
 
 describe('registry-aware remoteTypeUrls resolver', () => {
   const originalFetch = global.fetch;
+  let warnSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  });
 
   afterEach(() => {
     global.fetch = originalFetch;
+    warnSpy.mockRestore();
   });
 
   test('resolves remoteTypeUrls from the registry-resolved entry', async () => {
@@ -232,6 +238,8 @@ describe('registry-aware remoteTypeUrls resolver', () => {
     expect(urls['@x/remote'].zip).toBe(
       'https://cdn.example.com/v2/remote/@mf-types.zip'
     );
+    // a successful lookup must not warn
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 
   test('keeps the static URL when the registry entry does not satisfy the version', async () => {
@@ -262,6 +270,9 @@ describe('registry-aware remoteTypeUrls resolver', () => {
     expect(urls['@x/remote'].zip).toBe(
       'https://cdn.example.com/v1/remote/@mf-types.zip'
     );
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('did not satisfy the required version')
+    );
   });
 
   test('falls back to the static URL when the registry fetch fails', async () => {
@@ -284,6 +295,9 @@ describe('registry-aware remoteTypeUrls resolver', () => {
     )();
     expect(urls['@x/remote'].zip).toBe(
       'https://cdn.example.com/v1/remote/@mf-types.zip'
+    );
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("registry lookup failed for '@x/remote'")
     );
   });
 

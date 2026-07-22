@@ -183,6 +183,8 @@ Add the fetched types to the consumer's `tsconfig.json` so the editor and compil
 
 Remote types update out of band from the consumer's lockfile; delete the local `./@mf-types` directory to force a refresh.
 
+> Remote types are fetched during the webpack/rspack build (build time — there is no dev hot-reload of types), so `./@mf-types` does not exist until the bundler has run at least once. Run the build before `tsc` or your editor can resolve the remote types, and in CI sequence the bundler build ahead of the type-check step.
+
 ### Limitations
 
 - No dev-time hot type reload — `dev` is forced off; types are generated and consumed at build time.

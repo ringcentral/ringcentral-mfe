@@ -274,6 +274,11 @@ const createRegistryResolver = (
           // Accept the registry answer only when it satisfies the dependency
           // version (as the runtime does); otherwise keep the static URL.
           if (!isSatisfied(satisfiesVersion, remoteData, dependencyVersion)) {
+            // Surface the divergence: a build-vs-runtime type mismatch would
+            // otherwise be hidden by the static fallback.
+            console.warn(
+              `[MFE] federated types: registry entry for '${dependency}' did not satisfy the required version, using the static type URL`
+            );
             return [dependency, fallback] as const;
           }
           const base = deriveTypeBase(remoteData.entry);
@@ -287,6 +292,11 @@ const createRegistryResolver = (
             },
           ] as const;
         } catch {
+          // Surface the failure: a silent fallback hides a registry outage that
+          // may leave the consumer's types stale relative to the runtime.
+          console.warn(
+            `[MFE] federated types: registry lookup failed for '${dependency}', using the static type URL`
+          );
           return [dependency, fallback] as const;
         }
       })
