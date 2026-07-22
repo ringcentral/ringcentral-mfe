@@ -268,7 +268,9 @@ const createRegistryResolver = (
           const data = (await response.json()) as RegistryResponse;
           const remoteData = data?.[dependency];
           const dependencyVersion =
-            typeof value === 'object' ? value.dependencyVersion ?? '*' : '*';
+            typeof value === 'object'
+              ? value.dependencyVersion ?? value.version ?? '*'
+              : '*';
           // Accept the registry answer only when it satisfies the dependency
           // version (as the runtime does); otherwise keep the static URL.
           if (!isSatisfied(satisfiesVersion, remoteData, dependencyVersion)) {
