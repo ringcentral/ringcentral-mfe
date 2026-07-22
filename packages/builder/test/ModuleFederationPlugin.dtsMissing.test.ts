@@ -33,7 +33,7 @@ afterEach(() => {
   superApplySpy.mockRestore();
 });
 
-test('apply throws a clear opt-in error when @module-federation/dts-plugin is not installed', () => {
+test('apply throws a clear error when the optional @module-federation/dts-plugin cannot be loaded', () => {
   mockedGetSiteConfig.mockReturnValue({
     name: '@example/host',
     exposes: { './bootstrap': './src/bootstrap' },
@@ -60,5 +60,6 @@ test('apply throws a clear opt-in error when @module-federation/dts-plugin is no
   }
   expect(thrown).toBeDefined();
   expect(thrown?.message).toMatch(/@module-federation\/dts-plugin/);
+  expect(thrown?.message).toMatch(/optional dependency/);
   expect(thrown?.message).toMatch(/Node >=20\.18\.1/);
 });

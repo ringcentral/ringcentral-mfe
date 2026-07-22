@@ -161,13 +161,14 @@ class ModuleFederationPlugin extends container.ModuleFederationPlugin {
   }
 
   /**
-   * Apply the optional `@module-federation/dts-plugin` when `dts` is enabled.
+   * Apply `@module-federation/dts-plugin` when `dts` is enabled.
    *
-   * Loaded lazily (never at module top-level): the peer pulls a heavy dependency
-   * subtree and requires Node >=20.18.1, so an eager import would break loading
-   * the builder for non-adopters. The same package covers webpack and Rspack, so
-   * no `BUNDLER` switch is needed. `DtsPlugin` reads its config from
-   * `options.dts`; `addRuntimePlugins()` is not called (no enhanced runtime).
+   * It ships as an optional dependency and is required lazily (never at module
+   * top-level): it pulls a heavy dependency subtree and needs Node >=20.18.1, so
+   * an eager import would crash the builder wherever the platform skipped it. The
+   * same package covers webpack and Rspack, so no `BUNDLER` switch is needed.
+   * `DtsPlugin` reads its config from `options.dts`; `addRuntimePlugins()` is not
+   * called (no enhanced runtime).
    */
   private applyDtsPlugin(compiler: Compiler) {
     let dtsPlugin: typeof import('@module-federation/dts-plugin');
@@ -177,10 +178,10 @@ class ModuleFederationPlugin extends container.ModuleFederationPlugin {
         require('@module-federation/dts-plugin') as typeof import('@module-federation/dts-plugin');
     } catch (error) {
       const err = error as NodeJS.ErrnoException | undefined;
-      // Only the peer itself being absent is the opt-in error. Match the
-      // specifier form (not a bare substring): Node's MODULE_NOT_FOUND message
-      // also lists the failing module's path under "Require stack:", so a broken
-      // transitive dependency would otherwise be misreported as "not installed".
+      // Only the optional dependency itself being absent is the opt-in error.
+      // Match the specifier form (not a bare substring): Node's MODULE_NOT_FOUND
+      // message also lists the failing module's path under "Require stack:", so a
+      // broken transitive dependency would otherwise be misreported as absent.
       if (
         err?.code === 'MODULE_NOT_FOUND' &&
         err.message.includes(
@@ -188,7 +189,7 @@ class ModuleFederationPlugin extends container.ModuleFederationPlugin {
         )
       ) {
         throw new Error(
-          `[MFE] 'dts' is enabled but the optional peer '@module-federation/dts-plugin' is not installed. Install it to opt in to federated types (requires Node >=20.18.1), e.g. \`yarn add -D @module-federation/dts-plugin\` or \`npm i -D @module-federation/dts-plugin\`.`
+          `[MFE] federated types require '@module-federation/dts-plugin', which ships as an optional dependency but could not be loaded (it requires Node >=20.18.1). Upgrade Node or install it manually to use \`dts\`.`
         );
       }
       throw error;

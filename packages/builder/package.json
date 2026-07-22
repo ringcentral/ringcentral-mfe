@@ -37,25 +37,23 @@
   "author": "RingCentral",
   "license": "MIT",
   "peerDependencies": {
-    "@module-federation/dts-plugin": "^2.8.0",
     "@ringcentral/mfe-shared": "^0.1.0",
     "@rspack/core": ">=1.0.0",
     "webpack": "^5.75.0"
   },
   "peerDependenciesMeta": {
-    "@module-federation/dts-plugin": {
-      "optional": true
-    },
     "@rspack/core": {
       "optional": true
     }
   },
   "devDependencies": {
-    "@module-federation/dts-plugin": "2.8.0",
     "@rspack/core": "^1.0.0",
     "webpack": "^5.75.0"
   },
   "dependencies": {
     "yargs": "17.6.2"
+  },
+  "optionalDependencies": {
+    "@module-federation/dts-plugin": "2.8.0"
   }
 }

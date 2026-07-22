@@ -121,17 +121,11 @@ const App2 = useApp({
 
 ## Federated types
 
-`@ringcentral/mfe-builder` can emit and consume TypeScript declarations for federated modules using the standard Module Federation type mechanism: a producer publishes `@mf-types.zip` / `@mf-types.d.ts` next to its `remoteEntry.js`, and a consumer gets typed remotes. It is opt-in via the `dts` option and off by default — when `dts` is unset the build output is unchanged and no extra dependency is pulled in.
+`@ringcentral/mfe-builder` can emit and consume TypeScript declarations for federated modules using the standard Module Federation type mechanism: a producer publishes `@mf-types.zip` / `@mf-types.d.ts` next to its `remoteEntry.js`, and a consumer gets typed remotes. It is opt-in via the `dts` option and off by default — when `dts` is unset the build output is unchanged.
 
-Types are handled by [`@module-federation/dts-plugin`](https://www.npmjs.com/package/@module-federation/dts-plugin), an **optional peer dependency**. Install it in any project that sets `dts`:
+Types are handled by [`@module-federation/dts-plugin`](https://www.npmjs.com/package/@module-federation/dts-plugin), which ships as an **optional dependency** of `@ringcentral/mfe-builder` — it is installed automatically, so no manual step is needed to use `dts`.
 
-```sh
-yarn add -D @module-federation/dts-plugin
-# or
-npm install -D @module-federation/dts-plugin
-```
-
-> `@module-federation/dts-plugin` requires **Node >= 20.18.1**. Projects that do not use `dts` keep the builder's Node >= 16 support and pull nothing extra.
+> `@module-federation/dts-plugin` requires **Node >= 20.18.1**. On older Node it is skipped at install time and the `dts` option is unavailable — enabling `dts` then fails with a clear error. The builder itself keeps its Node >= 16 support for projects that do not use `dts`.
 
 ### Producing types
 
