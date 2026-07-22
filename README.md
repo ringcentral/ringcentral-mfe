@@ -26,6 +26,7 @@
 - **CSS isolation** - Support CSS modules CSS isolation injection for Webpack `style-loader` and so on.
 - **Debugger/Logger** - Provide meta info for Debugging/Logging.
 - **Version control** - Support custom registry for MFE remote entry version control
+- **Federated types** - Opt-in TypeScript declarations for federated modules via the `dts` option
 
 ## Installation
 
@@ -117,6 +118,82 @@ const App2 = useApp({
 
 > `webpack dev server` is not supported in multiple entry points, so you need to build and serve the worker file manually(e.g. `examples/basic/app3/dev.js`).
 > After building, all files in the `worker` directory except for `remoteEntry.js` do not need to be deployed.This means that you will have two MFE bundled files in different directories, e.g. `http://localhost:3000/remoteEntry.js` and `http://localhost:3000/worker/remoteEntry.js`. The name of the `worker` directory config is hardcode here.
+
+## Federated types
+
+`@ringcentral/mfe-builder` can emit and consume TypeScript declarations for federated modules using the standard Module Federation type mechanism: a producer publishes `@mf-types.zip` / `@mf-types.d.ts` next to its `remoteEntry.js`, and a consumer gets typed remotes. It is opt-in via the `dts` option and off by default — when `dts` is unset the build output is unchanged and no extra dependency is pulled in.
+
+Types are handled by [`@module-federation/dts-plugin`](https://www.npmjs.com/package/@module-federation/dts-plugin), an **optional peer dependency**. Install it in any project that sets `dts`:
+
+```sh
+yarn add -D @module-federation/dts-plugin
+# or
+npm install -D @module-federation/dts-plugin
+```
+
+> `@module-federation/dts-plugin` requires **Node >= 20.18.1**. Projects that do not use `dts` keep the builder's Node >= 16 support and pull nothing extra.
+
+### Producing types
+
+Enable `generateTypes` in the remote's `site.config`:
+
+```js
+module.exports = {
+  name: '@example/app2',
+  exposes: {
+    './src/bootstrap': './src/bootstrap',
+  },
+  dts: {
+    generateTypes: {
+      // A tsconfig that narrows `rootDir` to the exposed surface keeps the
+      // archive to the public API instead of the whole workspace.
+      tsConfigPath: './tsconfig.types.json',
+    },
+  },
+};
+```
+
+The archive is emitted at the output root, next to `remoteEntry.js`, so consumers can locate it. If the container `filename` is nested, set `generateTypes.outputDir` to the same directory to keep the archive co-located with the remote entry.
+
+> The exposed declarations must use relative or package-resolvable imports only. `@module-federation/dts-plugin` does not rewrite `tsconfig` path-alias imports in the emitted declarations ([module-federation/core#3363](https://github.com/module-federation/core/issues/3363)), so a public entry importing through a path alias (for example `@internal/model`) is unresolvable for consumers.
+
+### Consuming types
+
+Enable `consumeTypes` (or simply set `dts` when the site declares `dependencies`):
+
+```js
+module.exports = {
+  name: '@example/app1',
+  dependencies: {
+    '@example/app2': 'http://localhost:3002/remoteEntry.js',
+  },
+  dts: {
+    consumeTypes: true,
+  },
+};
+```
+
+The type-archive URL for each remote is derived from its `dependencies` entry (the same base plus `/@mf-types.zip`). When the site sets a `registry` with `registryAutoFetch: true` (and the default `fetch` registry type), the URLs are instead resolved from the registry at build time so the types match the version the runtime resolves; on any registry miss or failure the derived URL is used.
+
+Add the fetched types to the consumer's `tsconfig.json` so the editor and compiler pick them up:
+
+```json
+{
+  "compilerOptions": {
+    "paths": {
+      "*": ["./@mf-types/*"]
+    }
+  }
+}
+```
+
+Remote types update out of band from the consumer's lockfile; delete the local `./@mf-types` directory to force a refresh.
+
+### Limitations
+
+- No dev-time hot type reload — `dev` is forced off; types are generated and consumed at build time.
+- `tsconfig` path-alias imports in a public entry are not rewritten in the emitted declarations ([module-federation/core#3363](https://github.com/module-federation/core/issues/3363)); use relative or package-resolvable imports.
+- Build-time registry resolution needs the `registry` endpoint reachable from the build environment; otherwise the static derivation from `dependencies` is used.
 
 ## Contribution
 
