@@ -15,7 +15,12 @@ import type {
   RemoteTypeUrls,
   RegistryResponse,
 } from '@ringcentral/mfe-shared';
-import { getGlobal, identifierContainer } from '@ringcentral/mfe-shared';
+import {
+  getGlobal,
+  identifierContainer,
+  isSatisfied,
+  satisfiesVersion,
+} from '@ringcentral/mfe-shared';
 import { getEnv } from './getEnv';
 import { makeRemoteScript } from './make';
 
@@ -25,6 +30,10 @@ const DEFAULT_REMOTE_ENTRY = 'remoteEntry.js';
 // remote entry by `@module-federation/dts-plugin`.
 const MF_TYPES_ZIP = '@mf-types.zip';
 const MF_TYPES_API = '@mf-types.d.ts';
+
+// Registry-lookup timeout (ms) so a hanging registry cannot stall the build;
+// overridable via `consumeTypes.timeout`. On timeout we fall back to static.
+const DEFAULT_REGISTRY_TIMEOUT = 5000;
 
 export const getSiteConfig = ({ overrides = {} }: Options = {}): SiteConfig => {
   // TODO: implement more config options
@@ -201,26 +210,40 @@ const mergeRemoteTypeUrls = (
 };
 
 /**
- * A configured `registry` can be queried at build time (jsonp is browser-only,
- * so `fetch` only) to resolve the live entry a remote would load, closing the
- * version skew a purely static derivation can carry.
+ * Whether the build-time registry resolver applies. It mirrors the runtime: the
+ * runtime only queries the registry when `registryAutoFetch` is on and the
+ * registry type is `fetch` (jsonp is browser-only), so the resolver queries
+ * only under the same conditions — fidelity over reach.
  */
 const canUseRegistryResolver = (siteConfig: SiteConfig): boolean =>
   typeof siteConfig.registry === 'string' &&
   siteConfig.registry !== '*' &&
-  siteConfig.registryType !== 'jsonp' &&
+  (siteConfig.registryType ?? 'fetch') === 'fetch' &&
+  siteConfig.registryAutoFetch === true &&
   typeof fetch === 'function';
+
+/**
+ * A time-bounded `AbortSignal` when the runtime provides `AbortSignal.timeout`
+ * (Node >=17.3; dts requires >=20.18.1), else `undefined` (unbounded fetch).
+ */
+const timeoutSignal = (ms: number): AbortSignal | undefined => {
+  const ctor = AbortSignal as { timeout?: (ms: number) => AbortSignal };
+  return typeof ctor.timeout === 'function' ? ctor.timeout(ms) : undefined;
+};
 
 /**
  * Build an async `remoteTypeUrls` resolver (Module Federation's supported
  * function form) that, per dependency, queries the `registry` with the same
- * shape the runtime uses and derives the type-archive URL from the resolved
- * entry. Any failure falls back to the static-derived URL, so type resolution
- * never fails the build.
+ * shape and acceptance rule the runtime uses (`getEntryFromRegistry`): the query
+ * carries the consumer's version, and the resolved entry is used only when it
+ * satisfies the dependency version (honoring `forcedVersion`). The type-archive
+ * URL is derived from that entry. Any miss or failure falls back to the
+ * static-derived URL, so type resolution never fails the build.
  */
 const createRegistryResolver = (
   siteConfig: SiteConfig,
-  derived: RemoteTypeUrls
+  derived: RemoteTypeUrls,
+  timeout: number
 ): (() => Promise<RemoteTypeUrls>) => {
   const registry = siteConfig.registry as string;
   const { dependencies, name: main, version: mainVersion } = siteConfig;
@@ -236,15 +259,22 @@ const createRegistryResolver = (
             mainVersion: mainVersion ?? '*',
             _: Date.now().toString(),
           };
-          const version = typeof value === 'object' ? value.version : undefined;
-          if (version) query.version = version;
+          // The runtime query carries the consumer's version, not the remote's.
+          if (mainVersion) query.version = mainVersion;
           const response = await fetch(
-            `${registry}?${new URLSearchParams(query)}`
+            `${registry}?${new URLSearchParams(query)}`,
+            { signal: timeoutSignal(timeout) }
           );
           const data = (await response.json()) as RegistryResponse;
-          const entry = data?.[dependency]?.entry;
-          const base =
-            typeof entry === 'string' ? deriveTypeBase(entry) : undefined;
+          const remoteData = data?.[dependency];
+          const dependencyVersion =
+            typeof value === 'object' ? value.dependencyVersion ?? '*' : '*';
+          // Accept the registry answer only when it satisfies the dependency
+          // version (as the runtime does); otherwise keep the static URL.
+          if (!isSatisfied(satisfiesVersion, remoteData, dependencyVersion)) {
+            return [dependency, fallback] as const;
+          }
+          const base = deriveTypeBase(remoteData.entry);
           if (!base) return [dependency, fallback] as const;
           return [
             dependency,
@@ -275,14 +305,15 @@ const createRegistryResolver = (
 const resolveRemoteTypeUrls = (
   siteConfig: SiteConfig,
   derived: RemoteTypeUrls,
-  userRemoteTypeUrls: DtsConsumeTypesOptions['remoteTypeUrls']
+  userRemoteTypeUrls: DtsConsumeTypesOptions['remoteTypeUrls'],
+  timeout: number
 ): DtsConsumeTypesOptions['remoteTypeUrls'] => {
   if (typeof userRemoteTypeUrls === 'function') return userRemoteTypeUrls;
   if (userRemoteTypeUrls && Object.keys(userRemoteTypeUrls).length > 0) {
     return mergeRemoteTypeUrls(derived, userRemoteTypeUrls);
   }
   if (canUseRegistryResolver(siteConfig)) {
-    return createRegistryResolver(siteConfig, derived);
+    return createRegistryResolver(siteConfig, derived, timeout);
   }
   return derived;
 };
@@ -319,6 +350,7 @@ export const getDtsPluginOptions = (
     const userConsume: DtsConsumeTypesOptions =
       typeof resolved.consumeTypes === 'object' ? resolved.consumeTypes : {};
     const derived = deriveRemoteTypeUrls(dependencies);
+    const timeout = userConsume.timeout ?? DEFAULT_REGISTRY_TIMEOUT;
     // Turn consuming on only when the user opted in or a remote was discovered.
     if (
       resolved.consumeTypes !== undefined ||
@@ -331,7 +363,8 @@ export const getDtsPluginOptions = (
         remoteTypeUrls: resolveRemoteTypeUrls(
           siteConfig,
           derived,
-          userConsume.remoteTypeUrls
+          userConsume.remoteTypeUrls,
+          timeout
         ),
       };
     }

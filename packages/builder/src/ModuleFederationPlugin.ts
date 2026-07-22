@@ -177,11 +177,15 @@ class ModuleFederationPlugin extends container.ModuleFederationPlugin {
         require('@module-federation/dts-plugin') as typeof import('@module-federation/dts-plugin');
     } catch (error) {
       const err = error as NodeJS.ErrnoException | undefined;
-      // Only the peer itself being absent is the opt-in error; a broken
-      // transitive dependency must surface as its own failure.
+      // Only the peer itself being absent is the opt-in error. Match the
+      // specifier form (not a bare substring): Node's MODULE_NOT_FOUND message
+      // also lists the failing module's path under "Require stack:", so a broken
+      // transitive dependency would otherwise be misreported as "not installed".
       if (
         err?.code === 'MODULE_NOT_FOUND' &&
-        err.message.includes('@module-federation/dts-plugin')
+        err.message.includes(
+          "Cannot find module '@module-federation/dts-plugin'"
+        )
       ) {
         throw new Error(
           `[MFE] 'dts' is enabled but the optional peer '@module-federation/dts-plugin' is not installed. Install it to opt in to federated types (requires Node >=20.18.1), e.g. \`yarn add -D @module-federation/dts-plugin\` or \`npm i -D @module-federation/dts-plugin\`.`

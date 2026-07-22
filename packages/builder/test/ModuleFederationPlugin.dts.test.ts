@@ -69,6 +69,25 @@ test('dts unset: super() options carry no dts/dev/runtimePlugins and no DtsPlugi
   expect(mockedDtsPlugin).not.toHaveBeenCalled();
 });
 
+test('constructor strips dev/runtimePlugins from super() options and warns', () => {
+  const warnSpy = jest
+    .spyOn(console, 'warn')
+    .mockImplementation(() => undefined);
+  mockedGetSiteConfig.mockReturnValue({
+    ...baseSiteConfig(),
+    dev: true,
+    runtimePlugins: [],
+  });
+  const plugin = new ModuleFederationPlugin();
+  const superOptions = (plugin as unknown as { _options: object })._options;
+  expect(superOptions).not.toHaveProperty('dev');
+  expect(superOptions).not.toHaveProperty('runtimePlugins');
+  expect(warnSpy).toHaveBeenCalledWith(
+    expect.stringContaining("'dev'/'runtimePlugins'")
+  );
+  warnSpy.mockRestore();
+});
+
 test('dts set (non-SPA): DtsPlugin applied with dev:false and the resolved dts; super() stays clean', () => {
   mockedGetSiteConfig.mockReturnValue({
     ...baseSiteConfig(),

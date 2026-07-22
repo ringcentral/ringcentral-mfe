@@ -176,7 +176,7 @@ test('passes producer generateTypes options (incl. outputDir) through untouched'
   expect(resolved?.generateTypes).toEqual(generateTypes);
 });
 
-test('getModuleFederationConfig strips dts/dev/runtimePlugins from native options', () => {
+test('getModuleFederationConfig strips dts from the native options', () => {
   const cfg = getModuleFederationConfig({
     name: '@x/host',
     exposes: { './bootstrap': './src/bootstrap' },
@@ -186,8 +186,6 @@ test('getModuleFederationConfig strips dts/dev/runtimePlugins from native option
     dts: {},
   } as unknown as SiteConfig);
   expect(cfg).not.toHaveProperty('dts');
-  expect(cfg).not.toHaveProperty('dev');
-  expect(cfg).not.toHaveProperty('runtimePlugins');
 });
 
 describe('registry-aware remoteTypeUrls resolver', () => {
@@ -210,10 +208,10 @@ describe('registry-aware remoteTypeUrls resolver', () => {
       name: '@x/host',
       version: '1.2.3',
       registry: 'https://registry.example.com/lookup',
+      registryAutoFetch: true,
       dependencies: {
         '@x/remote': {
           entry: 'https://cdn.example.com/v1/remote/remoteEntry.js',
-          version: '^2',
         },
       },
       dts: {},
@@ -228,10 +226,41 @@ describe('registry-aware remoteTypeUrls resolver', () => {
     expect(calledUrl).toContain('dependency=%40x%2Fremote');
     expect(calledUrl).toContain('main=%40x%2Fhost');
     expect(calledUrl).toContain('mainVersion=1.2.3');
-    expect(calledUrl).toContain('version=%5E2');
+    // the query carries the consumer's version, not the remote's
+    expect(calledUrl).toContain('version=1.2.3');
     // derived from the registry entry (v2), not the static entry (v1)
     expect(urls['@x/remote'].zip).toBe(
       'https://cdn.example.com/v2/remote/@mf-types.zip'
+    );
+  });
+
+  test('keeps the static URL when the registry entry does not satisfy the version', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      json: async () => ({
+        '@x/remote': {
+          entry: 'https://cdn.example.com/v2/remote/remoteEntry.js',
+          version: '2.0.0',
+        },
+      }),
+    }) as unknown as typeof fetch;
+    const consumeTypes = consumeTypesOf({
+      name: '@x/host',
+      registry: 'https://registry.example.com/lookup',
+      registryAutoFetch: true,
+      dependencies: {
+        '@x/remote': {
+          entry: 'https://cdn.example.com/v1/remote/remoteEntry.js',
+          dependencyVersion: '^1.0.0',
+        },
+      },
+      dts: {},
+    } as unknown as SiteConfig);
+    const urls = await (
+      consumeTypes.remoteTypeUrls as () => Promise<RemoteTypeUrls>
+    )();
+    // 2.0.0 does not satisfy ^1.0.0 -> keep the static (v1) URL
+    expect(urls['@x/remote'].zip).toBe(
+      'https://cdn.example.com/v1/remote/@mf-types.zip'
     );
   });
 
@@ -242,6 +271,7 @@ describe('registry-aware remoteTypeUrls resolver', () => {
     const consumeTypes = consumeTypesOf({
       name: '@x/host',
       registry: 'https://registry.example.com/lookup',
+      registryAutoFetch: true,
       dependencies: {
         '@x/remote': {
           entry: 'https://cdn.example.com/v1/remote/remoteEntry.js',
@@ -257,11 +287,29 @@ describe('registry-aware remoteTypeUrls resolver', () => {
     );
   });
 
+  test('does not use the resolver when registryAutoFetch is not enabled', () => {
+    global.fetch = jest.fn() as unknown as typeof fetch;
+    const consumeTypes = consumeTypesOf({
+      registry: 'https://registry.example.com/lookup',
+      dependencies: {
+        '@x/remote': {
+          entry: 'https://cdn.example.com/v1/remote/remoteEntry.js',
+        },
+      },
+      dts: {},
+    } as unknown as SiteConfig);
+    expect(typeof consumeTypes.remoteTypeUrls).toBe('object');
+    expect(urlsOf(consumeTypes)['@x/remote'].zip).toBe(
+      'https://cdn.example.com/v1/remote/@mf-types.zip'
+    );
+  });
+
   test('does not use the resolver for a jsonp registry (static object instead)', () => {
     global.fetch = jest.fn() as unknown as typeof fetch;
     const consumeTypes = consumeTypesOf({
       registry: 'https://registry.example.com/lookup',
       registryType: 'jsonp',
+      registryAutoFetch: true,
       dependencies: {
         '@x/remote': {
           entry: 'https://cdn.example.com/v1/remote/remoteEntry.js',
@@ -292,6 +340,7 @@ describe('registry-aware remoteTypeUrls resolver', () => {
     global.fetch = jest.fn() as unknown as typeof fetch;
     const consumeTypes = consumeTypesOf({
       registry: 'https://registry.example.com/lookup',
+      registryAutoFetch: true,
       dependencies: {
         '@x/remote': {
           entry: 'https://cdn.example.com/v1/remote/remoteEntry.js',
