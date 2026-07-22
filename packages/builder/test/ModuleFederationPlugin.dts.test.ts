@@ -101,3 +101,19 @@ test('SPA build: DtsPlugin is not applied even when dts is set', () => {
   expect(superApplySpy).not.toHaveBeenCalled();
   expect(mockedDtsPlugin).not.toHaveBeenCalled();
 });
+
+test('the banner never serializes the dts config even when dts is set', () => {
+  mockedGetSiteConfig.mockReturnValue({
+    ...baseSiteConfig(),
+    dts: { generateTypes: { outputDir: 'DTS_MARKER_SHOULD_NOT_LEAK' } },
+  });
+  // Construct the real plugin (do NOT replace bannerPlugin) and inspect the
+  // banner string that would be injected into the remote entry.
+  const plugin = new ModuleFederationPlugin();
+  const { banner } = (
+    plugin as unknown as { bannerPlugin: { options: { banner: string } } }
+  ).bannerPlugin.options;
+  expect(banner).toContain('@example/host');
+  expect(banner).not.toContain('DTS_MARKER_SHOULD_NOT_LEAK');
+  expect(banner).not.toContain('"dts"');
+});

@@ -174,8 +174,9 @@ export interface DtsConsumeTypesOptions {
 
 /**
  * Opt-in Module Federation type options, mirroring
- * `@module-federation/dts-plugin`'s `PluginDtsOptions`. Declared here so the
- * builder does not take a hard dependency on the optional peer package.
+ * `@module-federation/dts-plugin`'s `PluginDtsOptions` (as of v2.8.0). Declared
+ * here so the builder does not take a hard dependency on the optional peer
+ * package.
  */
 export interface PluginDtsOptions {
   generateTypes?: boolean | DtsGenerateTypesOptions;

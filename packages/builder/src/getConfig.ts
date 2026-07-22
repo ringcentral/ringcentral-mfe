@@ -12,6 +12,8 @@ import type {
   PluginDtsOptions,
   DtsConsumeTypesOptions,
   RemoteTypeUrl,
+  RemoteTypeUrls,
+  RegistryResponse,
 } from '@ringcentral/mfe-shared';
 import { getGlobal, identifierContainer } from '@ringcentral/mfe-shared';
 import { getEnv } from './getEnv';
@@ -84,6 +86,7 @@ export const getModuleFederationConfig = (
     optimization,
     prefix,
     projectRoot,
+    dts,
     ...restConfig
   } = siteConfig;
   const remotes: ModuleFederationPluginOptions['remotes'] = {};
@@ -137,29 +140,41 @@ export const getModuleFederationConfig = (
 };
 
 /**
- * Strip the final path segment (the remote entry file, e.g. `remoteEntry.js`)
- * from an entry URL so sibling assets can be addressed at the same base.
+ * Derive the type-archive base for an entry URL: drop the query/hash and the
+ * final path segment (the remote entry file, e.g. `remoteEntry.js`) so sibling
+ * assets share the base. Returns `undefined` for an unparsable entry.
  */
-const stripEntryFilename = (entry: string): string => {
-  const lastSlash = entry.lastIndexOf('/');
-  return lastSlash === -1 ? entry : entry.slice(0, lastSlash);
+const deriveTypeBase = (entry: string): string | undefined => {
+  try {
+    const url = new URL(entry);
+    const dir = url.pathname.slice(0, url.pathname.lastIndexOf('/'));
+    return `${url.origin}${dir}`;
+  } catch {
+    if (__DEV__) {
+      console.warn(
+        `[MFE] Skipping remote type URL for unparsable entry: ${entry}`
+      );
+    }
+    return undefined;
+  }
 };
 
 /**
- * Derive the standard remote type-archive locations for every dependency that
- * declares a string `entry` URL. Discovery is fully static and build-time: the
- * archive lives next to `remoteEntry.js`, so we reuse each dependency's entry
- * base. Promise-style remotes have no inferable URL, so this explicit
- * derivation (including the required `alias`) is the authoritative discovery.
+ * Derive the standard remote type-archive locations for every dependency with a
+ * parseable string `entry`. Static, build-time discovery: the archive lives
+ * next to `remoteEntry.js`, so we reuse each entry's base. Promise-style remotes
+ * expose no inferable URL, so this explicit derivation (incl. `alias`) is the
+ * authoritative discovery. Entries that don't parse are skipped.
  */
 const deriveRemoteTypeUrls = (
   dependencies: SiteConfig['dependencies']
-): Record<string, RemoteTypeUrl> => {
-  const remoteTypeUrls: Record<string, RemoteTypeUrl> = {};
+): RemoteTypeUrls => {
+  const remoteTypeUrls: RemoteTypeUrls = {};
   Object.entries(dependencies ?? {}).forEach(([name, value]) => {
     const entry = typeof value === 'string' ? value : value?.entry;
     if (typeof entry !== 'string') return;
-    const base = stripEntryFilename(entry);
+    const base = deriveTypeBase(entry);
+    if (!base) return;
     remoteTypeUrls[name] = {
       alias: name,
       zip: `${base}/${MF_TYPES_ZIP}`,
@@ -170,26 +185,126 @@ const deriveRemoteTypeUrls = (
 };
 
 /**
+ * Merge user-supplied `remoteTypeUrls` over the derived ones. The user wins per
+ * field; `alias` defaults to the remote name so an entry that omits it (the
+ * easy-to-forget field promise remotes require) still carries one.
+ */
+const mergeRemoteTypeUrls = (
+  derived: RemoteTypeUrls,
+  user: RemoteTypeUrls
+): RemoteTypeUrls => {
+  const merged: RemoteTypeUrls = { ...derived };
+  Object.entries(user).forEach(([name, entry]) => {
+    merged[name] = { alias: name, ...derived[name], ...entry };
+  });
+  return merged;
+};
+
+/**
+ * A configured `registry` can be queried at build time (jsonp is browser-only,
+ * so `fetch` only) to resolve the live entry a remote would load, closing the
+ * version skew a purely static derivation can carry.
+ */
+const canUseRegistryResolver = (siteConfig: SiteConfig): boolean =>
+  typeof siteConfig.registry === 'string' &&
+  siteConfig.registry !== '*' &&
+  siteConfig.registryType !== 'jsonp' &&
+  typeof fetch === 'function';
+
+/**
+ * Build an async `remoteTypeUrls` resolver (Module Federation's supported
+ * function form) that, per dependency, queries the `registry` with the same
+ * shape the runtime uses and derives the type-archive URL from the resolved
+ * entry. Any failure falls back to the static-derived URL, so type resolution
+ * never fails the build.
+ */
+const createRegistryResolver = (
+  siteConfig: SiteConfig,
+  derived: RemoteTypeUrls
+): (() => Promise<RemoteTypeUrls>) => {
+  const registry = siteConfig.registry as string;
+  const { dependencies, name: main, version: mainVersion } = siteConfig;
+  return async () => {
+    const resolved = await Promise.all(
+      Object.entries(dependencies ?? {}).map(async ([dependency, value]) => {
+        const fallback = derived[dependency];
+        try {
+          const query: Record<string, string> = {
+            name: main ?? '',
+            dependency,
+            main: main ?? '',
+            mainVersion: mainVersion ?? '*',
+            _: Date.now().toString(),
+          };
+          const version = typeof value === 'object' ? value.version : undefined;
+          if (version) query.version = version;
+          const response = await fetch(
+            `${registry}?${new URLSearchParams(query)}`
+          );
+          const data = (await response.json()) as RegistryResponse;
+          const entry = data?.[dependency]?.entry;
+          const base =
+            typeof entry === 'string' ? deriveTypeBase(entry) : undefined;
+          if (!base) return [dependency, fallback] as const;
+          return [
+            dependency,
+            {
+              alias: dependency,
+              zip: `${base}/${MF_TYPES_ZIP}`,
+              api: `${base}/${MF_TYPES_API}`,
+            },
+          ] as const;
+        } catch {
+          return [dependency, fallback] as const;
+        }
+      })
+    );
+    return Object.fromEntries(
+      resolved.filter(
+        (pair): pair is [string, RemoteTypeUrl] => pair[1] !== undefined
+      )
+    );
+  };
+};
+
+/**
+ * Choose the consumer `remoteTypeUrls`: a user resolver/entries always win;
+ * otherwise resolve via the registry when configured, else use the static
+ * derivation.
+ */
+const resolveRemoteTypeUrls = (
+  siteConfig: SiteConfig,
+  derived: RemoteTypeUrls,
+  userRemoteTypeUrls: DtsConsumeTypesOptions['remoteTypeUrls']
+): DtsConsumeTypesOptions['remoteTypeUrls'] => {
+  if (typeof userRemoteTypeUrls === 'function') return userRemoteTypeUrls;
+  if (userRemoteTypeUrls && Object.keys(userRemoteTypeUrls).length > 0) {
+    return mergeRemoteTypeUrls(derived, userRemoteTypeUrls);
+  }
+  if (canUseRegistryResolver(siteConfig)) {
+    return createRegistryResolver(siteConfig, derived);
+  }
+  return derived;
+};
+
+/**
  * Resolve the Module Federation `dts` options for the builder from the opt-in
- * `siteConfig.dts`. Returns `undefined` when `dts` is unset so that nothing
+ * `siteConfig.dts`. Returns `undefined` when `dts` is unset so nothing
  * DTS-shaped is applied and the output stays byte-identical.
  *
  * - Producer: user `generateTypes` options (`tsConfigPath`, `outputDir`,
  *   `additionalFilesToCompile`, ...) pass through untouched. We set no default
  *   `outputDir`: dts-plugin emits `@mf-types.zip` / `@mf-types.d.ts` at the
  *   compiler output root (next to a default `remoteEntry.js`, via the default
- *   `typesFolder` of `@mf-types`), which is exactly the location the consumer
- *   derivation below targets. For a nested `filename`, set `outputDir` to keep
- *   the archive co-located with the remote entry. Note: dts-plugin does not
- *   rewrite tsconfig path-alias imports in the emitted declarations, so a
- *   curated public entry must use only relative or package-resolvable imports.
- * - Consumer: derive `consumeTypes.remoteTypeUrls` from `dependencies`; a
- *   user-supplied entry always wins (a user-supplied function resolver is left
- *   untouched). Default `consumeTypes.typesOnBuild` to `true` when consuming is
- *   on so production builds actually fetch the types.
- *
- * Note: dev-time hot type reload is unsupported in v1; the plugin forces the
- * top-level `dev` option off when handing these options to dts-plugin.
+ *   `typesFolder` of `@mf-types`), which is the location the consumer derivation
+ *   targets. For a nested `filename`, set `outputDir` to keep the archive
+ *   co-located with the remote entry. dts-plugin does not rewrite tsconfig
+ *   path-alias imports in the emitted declarations, so a curated public entry
+ *   must use only relative or package-resolvable imports.
+ * - Consumer: resolve `consumeTypes.remoteTypeUrls` (static derivation, or the
+ *   registry resolver when a `registry` is configured); a user-supplied value
+ *   wins. Default `consumeTypes.typesOnBuild` to `true` when consuming is on so
+ *   production builds actually fetch the types.
  */
 export const getDtsPluginOptions = (
   siteConfig: SiteConfig
@@ -203,27 +318,21 @@ export const getDtsPluginOptions = (
   if (resolved.consumeTypes !== false) {
     const userConsume: DtsConsumeTypesOptions =
       typeof resolved.consumeTypes === 'object' ? resolved.consumeTypes : {};
-    const userRemoteTypeUrls = userConsume.remoteTypeUrls;
-    // A user function resolver takes full control; skip static derivation.
-    const derived =
-      typeof userRemoteTypeUrls === 'function'
-        ? undefined
-        : deriveRemoteTypeUrls(dependencies);
-    const hasDiscovery = !!derived && Object.keys(derived).length > 0;
+    const derived = deriveRemoteTypeUrls(dependencies);
     // Turn consuming on only when the user opted in or a remote was discovered.
-    if (resolved.consumeTypes !== undefined || hasDiscovery) {
+    if (
+      resolved.consumeTypes !== undefined ||
+      Object.keys(derived).length > 0
+    ) {
       resolved.consumeTypes = {
         // Production consumption needs the build-time fetch; MF skips it otherwise.
         typesOnBuild: true,
         ...userConsume,
-        remoteTypeUrls:
-          typeof userRemoteTypeUrls === 'function'
-            ? userRemoteTypeUrls
-            : {
-                ...derived,
-                // A user-supplied entry always wins over the derived one.
-                ...userRemoteTypeUrls,
-              },
+        remoteTypeUrls: resolveRemoteTypeUrls(
+          siteConfig,
+          derived,
+          userConsume.remoteTypeUrls
+        ),
       };
     }
   }

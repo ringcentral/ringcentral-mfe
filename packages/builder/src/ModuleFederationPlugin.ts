@@ -102,10 +102,16 @@ class ModuleFederationPlugin extends container.ModuleFederationPlugin {
     const siteConfig = getSiteConfig({
       overrides: siteExtraConfig,
     });
-    // Separate the opt-in `dts` capability from the native federation config
-    // BEFORE building super() options: webpack's ModuleFederationPlugin
-    // constructor rejects unknown keys, and the banner must not serialize it.
-    const { dts, ...builderConfig } = siteConfig;
+    // Strip non-native keys before building super() options: the native
+    // container rejects unknown keys and the banner must not serialize them.
+    // site.config is arbitrary JS, so drop enhanced-only keys at runtime too.
+    const { dts, dev, runtimePlugins, ...builderConfig } =
+      siteConfig as SiteConfig & { dev?: unknown; runtimePlugins?: unknown };
+    if (__DEV__ && (dev !== undefined || runtimePlugins !== undefined)) {
+      console.warn(
+        `[MFE] 'dev'/'runtimePlugins' are not supported by this builder and are ignored.`
+      );
+    }
     const moduleFederationConfig = getModuleFederationConfig(builderConfig);
     const options = {
       ...moduleFederationConfig,
@@ -157,16 +163,11 @@ class ModuleFederationPlugin extends container.ModuleFederationPlugin {
   /**
    * Apply the optional `@module-federation/dts-plugin` when `dts` is enabled.
    *
-   * The peer is loaded lazily here (never at module top-level): it pulls a
-   * heavy dependency subtree and requires Node >=20.18.1, so eager loading
-   * would break the builder for the majority of consumers that never opt in.
-   * The same package covers webpack and Rspack, so — unlike `BannerPlugin` /
-   * `DefinePlugin` above — no `BUNDLER` switch is needed.
-   *
-   * `DtsPlugin` reads its configuration from `options.dts`, so it receives the
-   * native federation options augmented with the resolved `dts` block. Build
-   * time only: `addRuntimePlugins()` is intentionally not called (this builder
-   * ships no enhanced runtime).
+   * Loaded lazily (never at module top-level): the peer pulls a heavy dependency
+   * subtree and requires Node >=20.18.1, so an eager import would break loading
+   * the builder for non-adopters. The same package covers webpack and Rspack, so
+   * no `BUNDLER` switch is needed. `DtsPlugin` reads its config from
+   * `options.dts`; `addRuntimePlugins()` is not called (no enhanced runtime).
    */
   private applyDtsPlugin(compiler: Compiler) {
     let dtsPlugin: typeof import('@module-federation/dts-plugin');
@@ -175,22 +176,22 @@ class ModuleFederationPlugin extends container.ModuleFederationPlugin {
       dtsPlugin =
         require('@module-federation/dts-plugin') as typeof import('@module-federation/dts-plugin');
     } catch (error) {
+      const err = error as NodeJS.ErrnoException | undefined;
+      // Only the peer itself being absent is the opt-in error; a broken
+      // transitive dependency must surface as its own failure.
       if (
-        (error as NodeJS.ErrnoException | undefined)?.code ===
-        'MODULE_NOT_FOUND'
+        err?.code === 'MODULE_NOT_FOUND' &&
+        err.message.includes('@module-federation/dts-plugin')
       ) {
         throw new Error(
-          `[MFE] 'dts' is enabled but the optional peer '@module-federation/dts-plugin' is not installed. Install it to opt in to federated types (requires Node >=20.18.1), e.g. \`yarn add -D @module-federation/dts-plugin\`.`
+          `[MFE] 'dts' is enabled but the optional peer '@module-federation/dts-plugin' is not installed. Install it to opt in to federated types (requires Node >=20.18.1), e.g. \`yarn add -D @module-federation/dts-plugin\` or \`npm i -D @module-federation/dts-plugin\`.`
         );
       }
       throw error;
     }
-    // Future generality seam: an `onTypesEmitted(urls)` hook could publish the
-    // emitted type-archive URLs (e.g. into a runtime registry) without the core
-    // feature knowing about any specific consumer. Deferred in v1.
     new dtsPlugin.DtsPlugin({
       ...this.federationOptions,
-      // Dev-time hot type reload is unsupported in v1; force it off.
+      // No dev-time type server; force `dev` off.
       dev: false,
       dts: this.dtsOptions,
     }).apply(compiler);
