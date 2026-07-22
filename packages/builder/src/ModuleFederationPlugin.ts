@@ -12,10 +12,15 @@ import {
   identifier,
   identifierContainer,
   SiteConfig,
+  PluginDtsOptions,
   isSatisfied,
   satisfiesVersion,
 } from '@ringcentral/mfe-shared';
-import { getModuleFederationConfig, getSiteConfig } from './getConfig';
+import {
+  getDtsPluginOptions,
+  getModuleFederationConfig,
+  getSiteConfig,
+} from './getConfig';
 import { getEnv } from './getEnv';
 import { makeBannerScript } from './make';
 
@@ -41,7 +46,7 @@ export const getBannerScript = ({
   identifierContainer: string;
   mfeConfig: Pick<
     SiteConfig,
-    Exclude<keyof SiteConfig, 'optimization' | 'shared'>
+    Exclude<keyof SiteConfig, 'optimization' | 'shared' | 'dts'>
   >;
   identifier: string;
   maxRetries: number;
@@ -82,6 +87,14 @@ class ModuleFederationPlugin extends container.ModuleFederationPlugin {
 
   definePlugin: InstanceType<typeof DefinePlugin>;
 
+  // Native federation options handed to `super()`, reused when applying the
+  // optional DtsPlugin. Never contains `dts`/`dev`.
+  private federationOptions: ModuleFederationPluginOptions;
+
+  // Resolved Module Federation type options; `undefined` when `dts` is unset,
+  // in which case nothing DTS-shaped is applied and output is byte-identical.
+  private dtsOptions?: PluginDtsOptions;
+
   constructor(
     siteExtraConfig?: SiteOverridableConfig,
     externalOptions?: ModuleFederationPluginOptions
@@ -89,13 +102,21 @@ class ModuleFederationPlugin extends container.ModuleFederationPlugin {
     const siteConfig = getSiteConfig({
       overrides: siteExtraConfig,
     });
-    const moduleFederationConfig = getModuleFederationConfig(siteConfig);
+    // Separate the opt-in `dts` capability from the native federation config
+    // BEFORE building super() options: webpack's ModuleFederationPlugin
+    // constructor rejects unknown keys, and the banner must not serialize it.
+    const { dts, ...builderConfig } = siteConfig;
+    const moduleFederationConfig = getModuleFederationConfig(builderConfig);
     const options = {
       ...moduleFederationConfig,
       ...externalOptions,
     };
     super(options);
-    const { shared, optimization, ...mfeConfig } = siteConfig;
+    this.federationOptions = options;
+    // Resolve from the full siteConfig (needs `dependencies`); applied lazily
+    // in apply() only when `dts` was set.
+    this.dtsOptions = getDtsPluginOptions(siteConfig);
+    const { shared, optimization, ...mfeConfig } = builderConfig;
     const maxRetries = siteConfig.maxRetries ?? 1;
     const retryDelay = siteConfig.retryDelay ?? 1000;
     const injectMeta = optimization?.injectMeta;
@@ -129,6 +150,50 @@ class ModuleFederationPlugin extends container.ModuleFederationPlugin {
     this.definePlugin.apply.call(this.definePlugin, compiler);
     if (isSPAbuild) return;
     super.apply.call(this, compiler);
+    // Federated types live in the non-SPA path, after native federation.
+    if (this.dtsOptions) this.applyDtsPlugin(compiler);
+  }
+
+  /**
+   * Apply the optional `@module-federation/dts-plugin` when `dts` is enabled.
+   *
+   * The peer is loaded lazily here (never at module top-level): it pulls a
+   * heavy dependency subtree and requires Node >=20.18.1, so eager loading
+   * would break the builder for the majority of consumers that never opt in.
+   * The same package covers webpack and Rspack, so — unlike `BannerPlugin` /
+   * `DefinePlugin` above — no `BUNDLER` switch is needed.
+   *
+   * `DtsPlugin` reads its configuration from `options.dts`, so it receives the
+   * native federation options augmented with the resolved `dts` block. Build
+   * time only: `addRuntimePlugins()` is intentionally not called (this builder
+   * ships no enhanced runtime).
+   */
+  private applyDtsPlugin(compiler: Compiler) {
+    let dtsPlugin: typeof import('@module-federation/dts-plugin');
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      dtsPlugin =
+        require('@module-federation/dts-plugin') as typeof import('@module-federation/dts-plugin');
+    } catch (error) {
+      if (
+        (error as NodeJS.ErrnoException | undefined)?.code ===
+        'MODULE_NOT_FOUND'
+      ) {
+        throw new Error(
+          `[MFE] 'dts' is enabled but the optional peer '@module-federation/dts-plugin' is not installed. Install it to opt in to federated types (requires Node >=20.18.1), e.g. \`yarn add -D @module-federation/dts-plugin\`.`
+        );
+      }
+      throw error;
+    }
+    // Future generality seam: an `onTypesEmitted(urls)` hook could publish the
+    // emitted type-archive URLs (e.g. into a runtime registry) without the core
+    // feature knowing about any specific consumer. Deferred in v1.
+    new dtsPlugin.DtsPlugin({
+      ...this.federationOptions,
+      // Dev-time hot type reload is unsupported in v1; force it off.
+      dev: false,
+      dts: this.dtsOptions,
+    }).apply(compiler);
   }
 }
 

@@ -92,7 +92,7 @@ export const makeBannerScript = (
     identifierContainer: typeof import('@ringcentral/mfe-shared').identifierContainer;
     mfeConfig: Pick<
       SiteConfig,
-      Exclude<keyof SiteConfig, 'shared' | 'optimization'>
+      Exclude<keyof SiteConfig, 'shared' | 'optimization' | 'dts'>
     >;
     identifier: string;
     maxRetries: number;
