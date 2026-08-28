@@ -131,13 +131,19 @@ test('check re-render', async () => {
   expect(externalRenderFn).toBeCalledTimes(2);
   expect(internalRenderFn).toBeCalledTimes(1);
 
-  externalUpdate!();
+  // React 18: state updates outside React event handlers are not flushed
+  // synchronously unless wrapped in act().
+  act(() => {
+    externalUpdate!();
+  });
 
   expect(renderFn).toBeCalledTimes(1);
   expect(externalRenderFn).toBeCalledTimes(3);
   expect(internalRenderFn).toBeCalledTimes(1);
 
-  internalUpdate!();
+  act(() => {
+    internalUpdate!();
+  });
 
   expect(renderFn).toBeCalledTimes(1);
   expect(externalRenderFn).toBeCalledTimes(3);
