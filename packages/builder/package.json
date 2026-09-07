@@ -52,5 +52,8 @@
   },
   "dependencies": {
     "yargs": "17.6.2"
+  },
+  "optionalDependencies": {
+    "@module-federation/dts-plugin": "2.8.0"
   }
 }

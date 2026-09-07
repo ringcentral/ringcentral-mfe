@@ -95,6 +95,99 @@ export interface SiteOverridableConfig {
   projectRoot?: string;
 }
 
+/**
+ * A single remote's published type-archive locations, as consumed by
+ * `@module-federation/dts-plugin`.
+ */
+export interface RemoteTypeUrl {
+  /**
+   * The remote's federation alias. The builder always sets this to the remote
+   * name; promise-style remotes require it to consume types.
+   */
+  alias?: string;
+  /**
+   * URL of the flat `@mf-types.d.ts` API declaration.
+   */
+  api: string;
+  /**
+   * URL of the `@mf-types.zip` type archive.
+   */
+  zip: string;
+}
+
+export type RemoteTypeUrls = Record<string, RemoteTypeUrl>;
+
+/**
+ * Producer-side type generation options, mirroring
+ * `@module-federation/dts-plugin`'s `DtsRemoteOptions`.
+ */
+export interface DtsGenerateTypesOptions {
+  tsConfigPath?: string;
+  typesFolder?: string;
+  compiledTypesFolder?: string;
+  deleteTypesFolder?: boolean;
+  additionalFilesToCompile?: string[];
+  /**
+   * Directory the type archive is emitted to (relative to the compiler
+   * context). Defaults to the compiler output root, i.e. next to
+   * `remoteEntry.js` — set it to match a nested `filename` directory so the
+   * archive stays co-located with the remote entry.
+   */
+  outputDir?: string;
+  compileInChildProcess?: boolean;
+  compilerInstance?: 'tsc' | 'vue-tsc' | 'tspc' | string;
+  generateAPITypes?: boolean;
+  extractThirdParty?: boolean | { exclude?: Array<string | RegExp> };
+  extractRemoteTypes?: boolean;
+  abortOnError?: boolean;
+  deleteTsConfig?: boolean;
+}
+
+/**
+ * Consumer-side type options, mirroring
+ * `@module-federation/dts-plugin`'s `DtsHostOptions`.
+ */
+export interface DtsConsumeTypesOptions {
+  typesFolder?: string;
+  abortOnError?: boolean;
+  remoteTypesFolder?: string;
+  deleteTypesFolder?: boolean;
+  maxRetries?: number;
+  consumeAPITypes?: boolean;
+  runtimePkgs?: string[];
+  /**
+   * Static per-remote type-archive locations. The builder derives these from
+   * the declared `dependencies`; user-supplied entries win.
+   */
+  remoteTypeUrls?: RemoteTypeUrls | (() => Promise<RemoteTypeUrls>);
+  timeout?: number;
+  /**
+   * IP family used for network requests.
+   */
+  family?: 4 | 6;
+  /**
+   * Fetch and unpack remote types during the build. Required for the builder's
+   * production consumption (MF skips the fetch otherwise).
+   */
+  typesOnBuild?: boolean;
+}
+
+/**
+ * Opt-in Module Federation type options, mirroring
+ * `@module-federation/dts-plugin`'s `PluginDtsOptions` (as of v2.8.0). Declared
+ * here so the builder does not take a hard dependency on the optional peer
+ * package.
+ */
+export interface PluginDtsOptions {
+  generateTypes?: boolean | DtsGenerateTypesOptions;
+  consumeTypes?: boolean | DtsConsumeTypesOptions;
+  tsConfigPath?: string;
+  extraOptions?: Record<string, unknown>;
+  implementation?: string;
+  cwd?: string;
+  displayErrorInTerminal?: boolean;
+}
+
 export interface SiteConfig
   extends Pick<
       ModuleFederationPluginOptions,
@@ -121,6 +214,15 @@ export interface SiteConfig
      */
     injectMeta?: Rule[];
   };
+
+  /**
+   * Opt-in federated types. When set, the builder wires
+   * `@module-federation/dts-plugin` (an optional peer dependency) to emit the
+   * standard `@mf-types.zip` / `@mf-types.d.ts` for producers and to consume
+   * remote types for consumers. Unset means byte-identical output and no extra
+   * dependency. See `PluginDtsOptions`.
+   */
+  dts?: PluginDtsOptions;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface

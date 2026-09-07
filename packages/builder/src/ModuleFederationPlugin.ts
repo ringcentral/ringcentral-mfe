@@ -12,10 +12,15 @@ import {
   identifier,
   identifierContainer,
   SiteConfig,
+  PluginDtsOptions,
   isSatisfied,
   satisfiesVersion,
 } from '@ringcentral/mfe-shared';
-import { getModuleFederationConfig, getSiteConfig } from './getConfig';
+import {
+  getDtsPluginOptions,
+  getModuleFederationConfig,
+  getSiteConfig,
+} from './getConfig';
 import { getEnv } from './getEnv';
 import { makeBannerScript } from './make';
 
@@ -41,7 +46,7 @@ export const getBannerScript = ({
   identifierContainer: string;
   mfeConfig: Pick<
     SiteConfig,
-    Exclude<keyof SiteConfig, 'optimization' | 'shared'>
+    Exclude<keyof SiteConfig, 'optimization' | 'shared' | 'dts'>
   >;
   identifier: string;
   maxRetries: number;
@@ -82,6 +87,14 @@ class ModuleFederationPlugin extends container.ModuleFederationPlugin {
 
   definePlugin: InstanceType<typeof DefinePlugin>;
 
+  // Native federation options handed to `super()`, reused when applying the
+  // optional DtsPlugin. Never contains `dts`/`dev`.
+  private federationOptions: ModuleFederationPluginOptions;
+
+  // Resolved Module Federation type options; `undefined` when `dts` is unset,
+  // in which case nothing DTS-shaped is applied and output is byte-identical.
+  private dtsOptions?: PluginDtsOptions;
+
   constructor(
     siteExtraConfig?: SiteOverridableConfig,
     externalOptions?: ModuleFederationPluginOptions
@@ -89,13 +102,27 @@ class ModuleFederationPlugin extends container.ModuleFederationPlugin {
     const siteConfig = getSiteConfig({
       overrides: siteExtraConfig,
     });
-    const moduleFederationConfig = getModuleFederationConfig(siteConfig);
+    // Strip non-native keys before building super() options: the native
+    // container rejects unknown keys and the banner must not serialize them.
+    // site.config is arbitrary JS, so drop enhanced-only keys at runtime too.
+    const { dts, dev, runtimePlugins, ...builderConfig } =
+      siteConfig as SiteConfig & { dev?: unknown; runtimePlugins?: unknown };
+    if (__DEV__ && (dev !== undefined || runtimePlugins !== undefined)) {
+      console.warn(
+        `[MFE] 'dev'/'runtimePlugins' are not supported by this builder and are ignored.`
+      );
+    }
+    const moduleFederationConfig = getModuleFederationConfig(builderConfig);
     const options = {
       ...moduleFederationConfig,
       ...externalOptions,
     };
     super(options);
-    const { shared, optimization, ...mfeConfig } = siteConfig;
+    this.federationOptions = options;
+    // Resolve from the full siteConfig (needs `dependencies`); applied lazily
+    // in apply() only when `dts` was set.
+    this.dtsOptions = getDtsPluginOptions(siteConfig);
+    const { shared, optimization, ...mfeConfig } = builderConfig;
     const maxRetries = siteConfig.maxRetries ?? 1;
     const retryDelay = siteConfig.retryDelay ?? 1000;
     const injectMeta = optimization?.injectMeta;
@@ -129,6 +156,50 @@ class ModuleFederationPlugin extends container.ModuleFederationPlugin {
     this.definePlugin.apply.call(this.definePlugin, compiler);
     if (isSPAbuild) return;
     super.apply.call(this, compiler);
+    // Federated types live in the non-SPA path, after native federation.
+    if (this.dtsOptions) this.applyDtsPlugin(compiler);
+  }
+
+  /**
+   * Apply `@module-federation/dts-plugin` when `dts` is enabled.
+   *
+   * It ships as an optional dependency and is required lazily (never at module
+   * top-level): it pulls a heavy dependency subtree and needs Node >=20.18.1, so
+   * an eager import would crash the builder wherever the platform skipped it. The
+   * same package covers webpack and Rspack, so no `BUNDLER` switch is needed.
+   * `DtsPlugin` reads its config from `options.dts`; `addRuntimePlugins()` is not
+   * called (no enhanced runtime).
+   */
+  private applyDtsPlugin(compiler: Compiler) {
+    let dtsPlugin: typeof import('@module-federation/dts-plugin');
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      dtsPlugin =
+        require('@module-federation/dts-plugin') as typeof import('@module-federation/dts-plugin');
+    } catch (error) {
+      const err = error as NodeJS.ErrnoException | undefined;
+      // Only the optional dependency itself being absent is the opt-in error.
+      // Match the specifier form (not a bare substring): Node's MODULE_NOT_FOUND
+      // message also lists the failing module's path under "Require stack:", so a
+      // broken transitive dependency would otherwise be misreported as absent.
+      if (
+        err?.code === 'MODULE_NOT_FOUND' &&
+        err.message.includes(
+          "Cannot find module '@module-federation/dts-plugin'"
+        )
+      ) {
+        throw new Error(
+          `[MFE] federated types require '@module-federation/dts-plugin', which ships as an optional dependency but could not be loaded (it requires Node >=20.18.1). Upgrade Node or install it manually to use \`dts\`.`
+        );
+      }
+      throw error;
+    }
+    new dtsPlugin.DtsPlugin({
+      ...this.federationOptions,
+      // No dev-time type server; force `dev` off.
+      dev: false,
+      dts: this.dtsOptions,
+    }).apply(compiler);
   }
 }
 
