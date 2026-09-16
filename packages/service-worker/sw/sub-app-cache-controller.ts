@@ -3,6 +3,7 @@ import { ResInfo, SubAppInfo } from '../shared/types';
 import { logger } from './logger';
 import { getCacheResList } from './utils/caches-utils';
 import { runAll } from './utils/promise-utils';
+import { isValidResponse } from './utils/response-utils';
 
 export interface ISubAppCacheController {
   name: string;
@@ -122,7 +123,10 @@ export class SubAppCacheController implements ISubAppCacheController {
     }
     // logger.log(`[debug] ${this.name} send new request: ${url.href}`);
     const onlineResponse = await fetch(event.request);
-    if (this.files.find((file) => file.url === url.href)) {
+    if (
+      this.files.find((file) => file.url === url.href) &&
+      isValidResponse(onlineResponse, url.href)
+    ) {
       cacheStore.put(event.request, onlineResponse.clone());
     }
     return onlineResponse;
@@ -175,7 +179,16 @@ export class SubAppCacheController implements ISubAppCacheController {
               : file.url;
 
             const task = fetch(reqUrl, { signal: controller.signal })
-              .then((response) => cacheStore.put(keyUrl, response))
+              .then((response) => {
+                if (!isValidResponse(response, keyUrl)) {
+                  throw new Error(
+                    `Invalid response for ${keyUrl}: status=${
+                      response.status
+                    }, content-type=${response.headers.get('content-type')}`
+                  );
+                }
+                return cacheStore.put(keyUrl, response);
+              })
               .then(() => {
                 // logger.log(`[debug] ${this.name} cache success: ${reqUrl}`);
                 this._downloadMap.delete(file.url);
