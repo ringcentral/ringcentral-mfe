@@ -2,6 +2,7 @@ import {
   getCacheName,
   parseCacheName,
   getCacheResList,
+  isOutdatedSubAppCacheName,
 } from '../sw/utils/caches-utils';
 
 describe('caches-utils', () => {
@@ -17,7 +18,7 @@ describe('caches-utils', () => {
       };
       const cacheName = getCacheName(info);
       expect(cacheName).toEqual(
-        'mfe-sub-app-my-app@1.0.0/0-abc123-my-scope@manifest:manifest.json'
+        'mfe-sub-app-v2-my-app@1.0.0/0-abc123-my-scope@manifest:manifest.json'
       );
     });
     it('should return a valid cache name 2', () => {
@@ -31,7 +32,7 @@ describe('caches-utils', () => {
       };
       const cacheName = getCacheName(info);
       expect(cacheName).toEqual(
-        'mfe-sub-app-my-app@>=1.0.0/0-abc123-my-scope@manifest:manifest.json'
+        'mfe-sub-app-v2-my-app@>=1.0.0/0-abc123-my-scope@manifest:manifest.json'
       );
     });
   });
@@ -39,7 +40,7 @@ describe('caches-utils', () => {
   describe('parseCacheName', () => {
     it.each`
       cacheName | parsed
-      ${'mfe-sub-app-my-app@1.0.0/111-abc123-https://my-scope/@manifest:app-manifest'} | ${{
+      ${'mfe-sub-app-v2-my-app@1.0.0/111-abc123-https://my-scope/@manifest:app-manifest'} | ${{
   name: 'my-app',
   version: '1.0.0',
   timestamp: 111,
@@ -47,7 +48,7 @@ describe('caches-utils', () => {
   scope: 'https://my-scope/',
   manifestRelativePath: 'app-manifest',
 }}
-      ${'mfe-sub-app-my-app@>1.0.0/111-abc123-http://my-scope/@manifest:manifest.txt'} | ${{
+      ${'mfe-sub-app-v2-my-app@>1.0.0/111-abc123-http://my-scope/@manifest:manifest.txt'} | ${{
   name: 'my-app',
   version: '>1.0.0',
   timestamp: 111,
@@ -67,6 +68,28 @@ describe('caches-utils', () => {
       const cacheName = 'invalid-cache-name';
       const parsed = parseCacheName(cacheName);
       expect(parsed).toBeUndefined();
+    });
+  });
+
+  describe('isOutdatedSubAppCacheName', () => {
+    it('should return true for a previous-version sub-app cache name', () => {
+      expect(
+        isOutdatedSubAppCacheName(
+          'mfe-sub-app-my-app@1.0.0/111-abc123-https://my-scope/@manifest:app-manifest'
+        )
+      ).toBe(true);
+    });
+
+    it('should return false for a current-version sub-app cache name', () => {
+      expect(
+        isOutdatedSubAppCacheName(
+          'mfe-sub-app-v2-my-app@1.0.0/111-abc123-https://my-scope/@manifest:app-manifest'
+        )
+      ).toBe(false);
+    });
+
+    it('should return false for an unrelated cache name', () => {
+      expect(isOutdatedSubAppCacheName('workbox-precache-v2')).toBe(false);
     });
   });
 

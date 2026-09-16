@@ -6,7 +6,10 @@ import { SubAppInfo } from '../shared/types';
 import { logger } from './logger';
 import { handleClientEvent } from './messageServer';
 import { SubAppMultiVersionContainer } from './sub-app-versions-container';
-import { parseCacheName } from './utils/caches-utils';
+import {
+  parseCacheName,
+  isOutdatedSubAppCacheName,
+} from './utils/caches-utils';
 import { getSubAppInfo } from './utils/info-utils';
 import { fetchCacheFiles, paseManifestContent } from './utils/manifest-utils';
 
@@ -102,6 +105,10 @@ export class SubAppServiceWorkerManager {
     const outdateCacheNames: string[] = [];
     const restoreSubApps = cacheStoreNames
       .map((cacheStoreName) => {
+        if (isOutdatedSubAppCacheName(cacheStoreName)) {
+          outdateCacheNames.push(cacheStoreName);
+          return undefined;
+        }
         const parsedInfo = parseCacheName(cacheStoreName);
         if (parsedInfo) {
           const prePick = appSelector.get(parsedInfo.name);

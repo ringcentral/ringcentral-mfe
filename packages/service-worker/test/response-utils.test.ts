@@ -19,6 +19,24 @@ describe('isValidResponse', () => {
     ).toBe(true);
   });
 
+  it('accepts a case-insensitive javascript media type', () => {
+    expect(
+      isValidResponse(
+        makeResponse(200, 'Application/JavaScript'),
+        'https://app.ringcentral.com/subapp/message/1.0.0/remoteEntry.js'
+      )
+    ).toBe(true);
+  });
+
+  it('accepts a javascript media type with parameters', () => {
+    expect(
+      isValidResponse(
+        makeResponse(200, 'application/javascript; charset=utf-8'),
+        'https://app.ringcentral.com/subapp/message/1.0.0/remoteEntry.js'
+      )
+    ).toBe(true);
+  });
+
   it('rejects a non-ok response', () => {
     expect(
       isValidResponse(
