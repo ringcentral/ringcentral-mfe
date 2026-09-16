@@ -104,22 +104,13 @@ export class SubAppCacheController implements ISubAppCacheController {
       return response ?? fetch(event.request);
     }
     // downloadList.find();
-    const urlMatchResponse = await cacheStore.match(event.request.url);
-    if (urlMatchResponse) {
-      // logger.log(`[debug] ${this.name} resp from urlMatch: ${url.href}`);
-      return urlMatchResponse;
-    }
-    const urlIgnoreSearchMatchResponse = await cacheStore.match(
-      event.request.url,
-      {
-        ignoreSearch: true,
-      }
+    const cachedResponse = await this._matchValidCachedResponse(
+      cacheStore,
+      event,
+      url
     );
-    if (urlIgnoreSearchMatchResponse) {
-      // logger.log(
-      //   `[debug] ${this.name} resp from urlIgnoreSearchMatchResponse: ${url.href}`
-      // );
-      return urlIgnoreSearchMatchResponse;
+    if (cachedResponse) {
+      return cachedResponse;
     }
     // logger.log(`[debug] ${this.name} send new request: ${url.href}`);
     const onlineResponse = await fetch(event.request);
@@ -130,6 +121,33 @@ export class SubAppCacheController implements ISubAppCacheController {
       cacheStore.put(event.request, onlineResponse.clone());
     }
     return onlineResponse;
+  }
+
+  private async _matchValidCachedResponse(
+    cacheStore: Cache,
+    event: FetchEvent,
+    url: URL
+  ): Promise<Response | undefined> {
+    const urlMatchResponse = await cacheStore.match(event.request.url);
+    if (urlMatchResponse) {
+      if (isValidResponse(urlMatchResponse, url.href)) {
+        return urlMatchResponse;
+      }
+      await cacheStore.delete(event.request.url);
+    }
+    const urlIgnoreSearchMatchResponse = await cacheStore.match(
+      event.request.url,
+      {
+        ignoreSearch: true,
+      }
+    );
+    if (urlIgnoreSearchMatchResponse) {
+      if (isValidResponse(urlIgnoreSearchMatchResponse, url.href)) {
+        return urlIgnoreSearchMatchResponse;
+      }
+      await cacheStore.delete(event.request.url, { ignoreSearch: true });
+    }
+    return undefined;
   }
 
   async cacheAssets(manifestResponse: Response): Promise<void> {
