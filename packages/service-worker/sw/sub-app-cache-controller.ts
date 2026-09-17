@@ -3,6 +3,7 @@ import { ResInfo, SubAppInfo } from '../shared/types';
 import { logger } from './logger';
 import { getCacheResList } from './utils/caches-utils';
 import { runAll } from './utils/promise-utils';
+import { isValidResponse } from './utils/response-utils';
 
 export interface ISubAppCacheController {
   name: string;
@@ -103,10 +104,36 @@ export class SubAppCacheController implements ISubAppCacheController {
       return response ?? fetch(event.request);
     }
     // downloadList.find();
+    const cachedResponse = await this._matchValidCachedResponse(
+      cacheStore,
+      event,
+      url
+    );
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+    // logger.log(`[debug] ${this.name} send new request: ${url.href}`);
+    const onlineResponse = await fetch(event.request);
+    if (
+      this.files.find((file) => file.url === url.href) &&
+      isValidResponse(onlineResponse, url.href)
+    ) {
+      cacheStore.put(event.request, onlineResponse.clone());
+    }
+    return onlineResponse;
+  }
+
+  private async _matchValidCachedResponse(
+    cacheStore: Cache,
+    event: FetchEvent,
+    url: URL
+  ): Promise<Response | undefined> {
     const urlMatchResponse = await cacheStore.match(event.request.url);
     if (urlMatchResponse) {
-      // logger.log(`[debug] ${this.name} resp from urlMatch: ${url.href}`);
-      return urlMatchResponse;
+      if (isValidResponse(urlMatchResponse, url.href)) {
+        return urlMatchResponse;
+      }
+      await cacheStore.delete(event.request.url);
     }
     const urlIgnoreSearchMatchResponse = await cacheStore.match(
       event.request.url,
@@ -115,17 +142,12 @@ export class SubAppCacheController implements ISubAppCacheController {
       }
     );
     if (urlIgnoreSearchMatchResponse) {
-      // logger.log(
-      //   `[debug] ${this.name} resp from urlIgnoreSearchMatchResponse: ${url.href}`
-      // );
-      return urlIgnoreSearchMatchResponse;
+      if (isValidResponse(urlIgnoreSearchMatchResponse, url.href)) {
+        return urlIgnoreSearchMatchResponse;
+      }
+      await cacheStore.delete(event.request.url, { ignoreSearch: true });
     }
-    // logger.log(`[debug] ${this.name} send new request: ${url.href}`);
-    const onlineResponse = await fetch(event.request);
-    if (this.files.find((file) => file.url === url.href)) {
-      cacheStore.put(event.request, onlineResponse.clone());
-    }
-    return onlineResponse;
+    return undefined;
   }
 
   async cacheAssets(manifestResponse: Response): Promise<void> {
@@ -175,7 +197,16 @@ export class SubAppCacheController implements ISubAppCacheController {
               : file.url;
 
             const task = fetch(reqUrl, { signal: controller.signal })
-              .then((response) => cacheStore.put(keyUrl, response))
+              .then((response) => {
+                if (!isValidResponse(response, keyUrl)) {
+                  throw new Error(
+                    `Invalid response for ${keyUrl}: status=${
+                      response.status
+                    }, content-type=${response.headers.get('content-type')}`
+                  );
+                }
+                return cacheStore.put(keyUrl, response);
+              })
               .then(() => {
                 // logger.log(`[debug] ${this.name} cache success: ${reqUrl}`);
                 this._downloadMap.delete(file.url);
